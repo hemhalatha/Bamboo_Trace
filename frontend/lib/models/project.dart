@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Project {
   final String? id;
   final String sourceBatchId;
@@ -21,17 +19,16 @@ class Project {
     required this.createdAt,
   });
 
-  factory Project.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data()! as Map<String, dynamic>;
+  factory Project.fromJson(Map<String, dynamic> data) {
     return Project(
-      id: doc.id,
+      id: data['id'],
       sourceBatchId: data['sourceBatchId'] ?? '',
       productType: data['productType'] ?? '',
       productName: data['productName'] ?? '',
       quantity: data['quantity'] ?? 0,
       estimatedDays: data['estimatedDays'] ?? 0,
       progress: (data['progress'] ?? 0.0).toDouble(),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
 
@@ -43,7 +40,6 @@ class Project {
       'quantity': quantity,
       'estimatedDays': estimatedDays,
       'progress': progress,
-      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

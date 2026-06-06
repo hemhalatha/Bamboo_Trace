@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
+import '../../services/auth_service.dart';
 import '../farmer/farmer_dashboard.dart';
 import '../artisan/artisan_dashboard.dart';
 import '../customer/customer_dashboard.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -15,31 +17,26 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordHidden = true;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isSigningIn = false;
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+    setState(() => _isSigningIn = true);
+    final authService = context.read<AuthService>();
+    final success = await authService.signIn(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _isSigningIn = false);
+
+    if (success && authService.userRole != null) {
+      _navigateToRoleDashboard(authService.userRole!);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authService.errorMessage ?? 'Login failed')),
       );
-      User? user = userCredential.user;
-
-      if (user != null) {
-        final roleDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (!roleDoc.exists) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('User role not assigned. Contact support.')));
-          await _auth.signOut();
-          return;
-        }
-        String userRole = roleDoc.get('role');
-        _navigateToRoleDashboard(userRole);
-      }
-
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
     }
   }
 
@@ -112,10 +109,32 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _login,
+                    onPressed: _isSigningIn ? null : _login,
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: Text('Sign In', style: TextStyle(fontSize: 18, color: Colors.white)),
+                    child: _isSigningIn
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text('Sign In', style: TextStyle(fontSize: 18, color: Colors.white)),
                   ),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Don't have an account?"),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => SignupPage()),
+                        );
+                      },
+                      child: Text('Sign up'),
+                    ),
+                  ],
                 ),
               ],
             ),

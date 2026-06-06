@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/auth_service.dart';
 import 'package:provider/provider.dart';
+
+import '../../services/auth_service.dart';
 import '../auth/login_page.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -16,7 +16,7 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = context.watch<AuthService>().currentUser;
 
     return Padding(
       padding: EdgeInsets.all(16),
@@ -28,10 +28,15 @@ class ProfileTab extends StatelessWidget {
             child: Icon(Icons.person, size: 50, color: Colors.green[700]),
           ),
           SizedBox(height: 20),
-          Text(user?.displayName ?? 'John Doe', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text(user?.email ?? 'email@example.com', style: TextStyle(color: Colors.grey[600])),
+          Text(
+            user?.name ?? 'User',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            user?.email ?? 'email@example.com',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
           SizedBox(height: 30),
-
           Card(
             child: Column(
               children: [
@@ -39,9 +44,7 @@ class ProfileTab extends StatelessWidget {
                   leading: Icon(Icons.edit),
                   title: Text('Edit Profile'),
                   trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    // Implement profile editing
-                  },
+                  onTap: () {},
                 ),
                 Divider(),
                 ListTile(

@@ -12,16 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase core & services
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.17.7
-  cloud_firestore: ^4.17.5
-
   # State management
   provider: ^6.1.1
 
-  # Network requests if needed
+  # Network requests and secure token storage
   http: ^1.1.0
+  flutter_secure_storage: ^9.2.2
 
   # Icons
   cupertino_icons: ^1.0.6

@@ -1,40 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../services/api_service.dart';
 
 class FarmerBatchesTab extends StatelessWidget {
+  final ApiService _apiService = ApiService();
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      return Center(child: Text('Login required to view batches'));
-    }
-
-    Stream<QuerySnapshot> batchesStream = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('batches')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: batchesStream,
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _apiService.getBatches(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Unable to load batches.'));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(child: Text('No batches found.'));
         }
 
-        final batches = snapshot.data!.docs;
+        final batches = snapshot.data!;
 
         return ListView.builder(
           padding: EdgeInsets.all(16),
           itemCount: batches.length,
           itemBuilder: (context, index) {
-            final data = batches[index].data()! as Map<String, dynamic>;
+            final data = batches[index];
             return Card(
               margin: EdgeInsets.only(bottom: 12),
               child: ListTile(

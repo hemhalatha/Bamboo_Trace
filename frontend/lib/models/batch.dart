@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Batch {
   final String? id;
   final String batchId;
@@ -17,15 +15,14 @@ class Batch {
     required this.createdAt,
   });
 
-  factory Batch.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data()! as Map<String, dynamic>;
+  factory Batch.fromJson(Map<String, dynamic> data) {
     return Batch(
-      id: doc.id,
+      id: data['id'],
       batchId: data['batchId'] ?? '',
       type: data['type'] ?? '',
       quantity: data['quantity'] ?? 0,
       location: data['location'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
 
@@ -35,7 +32,6 @@ class Batch {
       'type': type,
       'quantity': quantity,
       'location': location,
-      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

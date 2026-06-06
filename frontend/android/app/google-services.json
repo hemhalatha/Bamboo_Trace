@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1052394221458",
+    "project_id": "ai-bot-35470",
+    "storage_bucket": "ai-bot-35470.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052394221458:android:5f90c6d63d2f49a2265b4b",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoH7VkI0z2xoLnZ9zgCSaqReBBT3FIZAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
+import '../../services/auth_service.dart';
 import 'login_page.dart';
 import '../farmer/farmer_dashboard.dart';
 import '../artisan/artisan_dashboard.dart';
@@ -20,23 +21,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkLoginStatus() async {
     await Future.delayed(Duration(seconds: 2));
-    User? user = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      final roleDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final authService = context.read<AuthService>();
+    await authService.initialize();
 
-      if (roleDoc.exists) {
-        String userRole = roleDoc.get('role');
-        _navigateToRoleDashboard(userRole);
-        return;
-      }
-      await FirebaseAuth.instance.signOut();
-    }
-
-    Navigator.pushReplacement(
+    if (!mounted) return;
+    final role = authService.userRole;
+    if (role == null) {
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LoginPage())
-    );
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+      return;
+    }
+    _navigateToRoleDashboard(role);
   }
 
   void _navigateToRoleDashboard(String role) {

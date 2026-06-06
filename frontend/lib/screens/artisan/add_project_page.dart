@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../services/api_service.dart';
 
 class AddProjectPage extends StatefulWidget {
   @override
@@ -13,7 +13,9 @@ class _AddProjectPageState extends State<AddProjectPage> {
   final _productNameController = TextEditingController();
   final _quantityController = TextEditingController();
   final _estimatedDaysController = TextEditingController();
+  final ApiService _apiService = ApiService();
   double _progress = 0.0;
+  bool _isSaving = false;
   String _selectedProductType = 'Furniture';
 
   @override
@@ -28,33 +30,28 @@ class _AddProjectPageState extends State<AddProjectPage> {
   Future<void> _saveProject() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Login needed')));
-      return;
-    }
-
+    setState(() => _isSaving = true);
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('projects')
-          .add({
+      await _apiService.addProject({
         'sourceBatchId': _sourceBatchController.text.trim(),
         'productType': _selectedProductType,
         'productName': _productNameController.text.trim(),
         'quantity': int.parse(_quantityController.text.trim()),
         'estimatedDays': int.parse(_estimatedDaysController.text.trim()),
         'progress': _progress,
-        'createdAt': FieldValue.serverTimestamp(),
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Project added')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Project added')),
+      );
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -73,13 +70,19 @@ class _AddProjectPageState extends State<AddProjectPage> {
             children: [
               TextFormField(
                 controller: _sourceBatchController,
-                decoration: InputDecoration(labelText: 'Source Batch ID', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Source Batch ID',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedProductType,
-                decoration: InputDecoration(labelText: 'Product Type', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Product Type',
+                  border: OutlineInputBorder(),
+                ),
                 items: ['Furniture', 'Decorative', 'Utility', 'Custom']
                     .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                     .toList(),
@@ -88,13 +91,19 @@ class _AddProjectPageState extends State<AddProjectPage> {
               SizedBox(height: 16),
               TextFormField(
                 controller: _productNameController,
-                decoration: InputDecoration(labelText: 'Product Name', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Product Name',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               SizedBox(height: 16),
               TextFormField(
                 controller: _quantityController,
-                decoration: InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Quantity',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Required';
@@ -105,7 +114,10 @@ class _AddProjectPageState extends State<AddProjectPage> {
               SizedBox(height: 16),
               TextFormField(
                 controller: _estimatedDaysController,
-                decoration: InputDecoration(labelText: 'Estimated Completion Time (days)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Estimated Completion Time (days)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Required';
@@ -114,7 +126,10 @@ class _AddProjectPageState extends State<AddProjectPage> {
                 },
               ),
               SizedBox(height: 20),
-              Text('Initial Progress: ${(_progress * 100).toInt()}%', style: TextStyle(fontSize: 16)),
+              Text(
+                'Initial Progress: ${(_progress * 100).toInt()}%',
+                style: TextStyle(fontSize: 16),
+              ),
               Slider(
                 value: _progress,
                 onChanged: (value) => setState(() => _progress = value),
@@ -128,9 +143,14 @@ class _AddProjectPageState extends State<AddProjectPage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _saveProject,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
-                  child: Text('Add Project', style: TextStyle(fontSize: 16)),
+                  onPressed: _isSaving ? null : _saveProject,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[700],
+                  ),
+                  child: Text(
+                    _isSaving ? 'Adding...' : 'Add Project',
+                    style: TextStyle(fontSize: 16),
+                  ),
                 ),
               ),
             ],
