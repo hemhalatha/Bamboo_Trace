@@ -99,7 +99,26 @@ class _SignupPageState extends State<SignupPage> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'Please enter your name';
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
+                    }
+
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return 'Password must contain an uppercase letter';
+                    }
+
+                    if (!RegExp(r'[a-z]').hasMatch(value)) {
+                      return 'Password must contain a lowercase letter';
+                    }
+
+                    if (!RegExp(r'\d').hasMatch(value)) {
+                      return 'Password must contain a number';
+                    }
+
                     return null;
                   },
                 ),

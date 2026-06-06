@@ -155,7 +155,22 @@ class ApiService {
     }
 
     if (decoded is Map<String, dynamic> && decoded['detail'] != null) {
-      throw Exception(decoded['detail']);
+      final detail = decoded['detail'];
+
+      if (detail is String) {
+        throw Exception(detail);
+      }
+
+      if (detail is List && detail.isNotEmpty) {
+        final first = detail.first;
+
+        if (first is Map<String, dynamic> &&
+            first.containsKey('msg')) {
+          throw Exception(first['msg']);
+        }
+
+        throw Exception(detail.toString());
+      }
     }
     throw Exception('Request failed with status ${response.statusCode}');
   }
