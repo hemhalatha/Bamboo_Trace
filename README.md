@@ -1,6 +1,6 @@
 # BambooTrace
 
-A supply-chain tracking app for bamboo products — Flutter frontend with Firebase backend (Firestore + Auth) and Firebase Cloud Functions providing authenticated REST endpoints.
+BambooTrace is a full-stack supply-chain transparency platform that tracks bamboo products from farmers to artisans to customers, enabling traceability, trust, and direct stakeholder interaction without traditional middlemen.
 
 ## Table of contents
 - [Project overview](#project-overview)
