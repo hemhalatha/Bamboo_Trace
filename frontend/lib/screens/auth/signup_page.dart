@@ -28,7 +28,7 @@ class _SignupPageState extends State<SignupPage> {
     final authService = context.read<AuthService>();
     final success = await authService.signUp(
       _emailController.text.trim(),
-      _passwordController.text.trim(),
+      _passwordController.text,
       _selectedRole,
       _nameController.text.trim(),
     );
@@ -96,27 +96,15 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Name',
                     prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
+                      return 'Please enter your name';
                     }
 
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-
-                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                      return 'Password must contain an uppercase letter';
-                    }
-
-                    if (!RegExp(r'[a-z]').hasMatch(value)) {
-                      return 'Password must contain a lowercase letter';
-                    }
-
-                    if (!RegExp(r'\d').hasMatch(value)) {
-                      return 'Password must contain a number';
+                    if (value.trim().length < 2) {
+                      return 'Name must contain at least 2 characters';
                     }
 
                     return null;

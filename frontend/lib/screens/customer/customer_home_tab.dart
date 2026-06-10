@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import '../customer/contact_artisan_page.dart';
+import '../customer/custom_request_page.dart';
+import '../../services/api_service.dart';
 
-class CustomerHomeTab extends StatelessWidget {
-  final products = [
-    {'name': 'Bamboo Chair', 'price': '₹2,500', 'artisan': 'Raj Kumar'},
-    {'name': 'Bamboo Lamp', 'price': '₹800', 'artisan': 'Priya Singh'},
-    {'name': 'Bamboo Table', 'price': '₹4,200', 'artisan': 'Kumar Das'},
-    {'name': 'Bamboo Basket', 'price': '₹350', 'artisan': 'Maya Devi'},
-  ];
+class CustomerHomeTab extends StatefulWidget {
+  @override
+  State<CustomerHomeTab> createState() => _CustomerHomeTabState();
+}
+
+class _CustomerHomeTabState extends State<CustomerHomeTab> {
+  final _apiService = ApiService();
+  late Future<List<Map<String, dynamic>>> _productsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _productsFuture = _apiService.getProjectCatalog();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,38 +53,62 @@ class CustomerHomeTab extends StatelessWidget {
           ),
           SizedBox(height: 10),
 
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 0.8),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              final product = products[index];
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: Container(decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.vertical(top: Radius.circular(12))), child: Center(child: Icon(Icons.eco, size: 50, color: Colors.green[600])))),
-                    Padding(
-                      padding: EdgeInsets.all(12),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _productsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Text(snapshot.error.toString());
+              }
+              final products = snapshot.data ?? [];
+              if (products.isEmpty) {
+                return Text('No products available yet');
+              }
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 0.78),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ContactArtisanPage(product: product)),
+                        );
+                      },
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(product['name']!, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          SizedBox(height: 4),
-                          Text('By ${product['artisan']}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                          SizedBox(height: 8),
-                          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text(product['price']!, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700])),
-                            Icon(Icons.add_shopping_cart, size: 20),
-                          ]),
+                          Expanded(child: Container(decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.vertical(top: Radius.circular(12))), child: Center(child: Icon(Icons.eco, size: 50, color: Colors.green[600])))),
+                          Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(product['productName'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                SizedBox(height: 4),
+                                Text(product['productType'] ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text('By ${product['artisanName'] ?? 'Artisan'}', style: TextStyle(color: Colors.grey[600], fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                SizedBox(height: 8),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                  Text('${product['quantity']} available', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700], fontSize: 12)),
+                                  Icon(Icons.add_shopping_cart, size: 20),
+                                ]),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
@@ -92,15 +125,45 @@ class CustomerHomeTab extends StatelessWidget {
                   SizedBox(width: 16),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Custom Orders', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('Contact artisans for personalized products', style: TextStyle(color: Colors.grey[600])),
+                      Text('Product Orders', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Select a product to buy from its artisan seller', style: TextStyle(color: Colors.grey[600])),
                     ]),
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => ContactArtisanPage()));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Select a product to place an order')),
+                      );
                     },
-                    child: Text('Contact'),
+                    child: Text('Buy'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
+          Card(
+            color: Colors.orange[50],
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.design_services, color: Colors.orange[700]),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Custom Request', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Ask a specific artisan to make something not listed for sale', style: TextStyle(color: Colors.grey[600])),
+                    ]),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CustomRequestPage()),
+                      );
+                    },
+                    child: Text('Request'),
                   ),
                 ],
               ),

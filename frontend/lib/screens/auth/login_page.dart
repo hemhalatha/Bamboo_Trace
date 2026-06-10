@@ -26,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
     final authService = context.read<AuthService>();
     final success = await authService.signIn(
       _emailController.text.trim(),
-      _passwordController.text.trim(),
+      _passwordController.text,
     );
     if (!mounted) return;
     setState(() => _isSigningIn = false);

@@ -1,6 +1,7 @@
 import logging
+from time import monotonic
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -23,6 +24,44 @@ from app.schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+FAILED_LOGIN_WINDOW_SECONDS = 15 * 60
+_login_attempts: dict[str, list[float]] = {}
+
+
+def _login_rate_limit_key(request: Request, email: str) -> str:
+    client_host = request.client.host if request.client else "unknown"
+    return f"{client_host}:{email}"
+
+
+def _recent_failed_attempts(key: str) -> list[float]:
+    now = monotonic()
+    attempts = [
+        timestamp
+        for timestamp in _login_attempts.get(key, [])
+        if now - timestamp < FAILED_LOGIN_WINDOW_SECONDS
+    ]
+    _login_attempts[key] = attempts
+    return attempts
+
+
+def _ensure_login_not_rate_limited(key: str) -> None:
+    if len(_recent_failed_attempts(key)) >= MAX_FAILED_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Please try again later.",
+        )
+
+
+def _record_failed_login(key: str) -> None:
+    attempts = _recent_failed_attempts(key)
+    attempts.append(monotonic())
+    _login_attempts[key] = attempts
+
+
+def _clear_failed_login_attempts(key: str) -> None:
+    _login_attempts.pop(key, None)
 
 
 @router.post(
@@ -104,9 +143,12 @@ def signup(
 )
 def login(
     payload: LoginRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     email = payload.email.strip().lower()
+    rate_limit_key = _login_rate_limit_key(request, email)
+    _ensure_login_not_rate_limited(rate_limit_key)
 
     user = db.scalar(
         select(User).where(User.email == email)
@@ -120,6 +162,7 @@ def login(
             "Failed login attempt for email=%s",
             email,
         )
+        _record_failed_login(rate_limit_key)
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,6 +173,7 @@ def login(
         "User logged in: user_id=%s",
         user.id,
     )
+    _clear_failed_login_attempts(rate_limit_key)
 
     token = create_access_token(
         subject=user.id,
