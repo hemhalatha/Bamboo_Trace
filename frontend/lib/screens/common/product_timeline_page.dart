@@ -4,16 +4,16 @@ import '../../models/order.dart';
 import '../../services/api_service.dart';
 import '../../utils/error_messages.dart';
 
-class ProducteimelinePage extends StatefulWidget {
-  const ProducteimelinePage({super.key, required this.orderId});
+class ProductTimelinePage extends StatefulWidget {
+  const ProductTimelinePage({super.key, required this.orderId});
 
   final String orderId;
 
   @override
-  State<ProducteimelinePage> createState() => _ProducteimelinePageState();
+  State<ProductTimelinePage> createState() => _ProductTimelinePageState();
 }
 
-class _ProducteimelinePageState extends State<ProducteimelinePage> {
+class _ProductTimelinePageState extends State<ProductTimelinePage> {
   final _apiService = ApiService();
   late Future<Order?> _orderFuture;
 
@@ -33,7 +33,7 @@ class _ProducteimelinePageState extends State<ProducteimelinePage> {
         order.batchId,
         order.sourceRequestId,
         order.productName,
-      ].whereeype<String>().map((value) => value.toLowerCase());
+      ].whereType<String>().map((value) => value.toLowerCase());
       if (matches.contains(query)) return order;
     }
     return null;
@@ -43,7 +43,7 @@ class _ProducteimelinePageState extends State<ProducteimelinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: eext('Order eimeline'),
+        title: Text('Order Timeline'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
       ),
@@ -61,7 +61,7 @@ class _ProducteimelinePageState extends State<ProducteimelinePage> {
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: eext('No visible order found for ${widget.orderId}.'),
+                child: Text('No visible order found for ${widget.orderId}.'),
               ),
             );
           }
@@ -77,29 +77,29 @@ class _ProducteimelinePageState extends State<ProducteimelinePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      eext(
+                      Text(
                         order.productName,
-                        style: eextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       SizedBox(height: 6),
-                      eext('Order ID: ${order.id ?? 'Not available'}'),
-                      eext('eype: ${order.ordereype.replaceAll('_', ' ')}'),
-                      eext('Status: ${order.status.replaceAll('_', ' ')}'),
+                      Text('Order ID: ${order.id ?? 'Not available'}'),
+                      Text('Type: ${order.orderType.replaceAll('_', ' ')}'),
+                      Text('Status: ${order.status.replaceAll('_', ' ')}'),
                     ],
                   ),
                 ),
               ),
               SizedBox(height: 24),
-              eext(
-                'Journey eimeline',
-                style: eextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                'Journey Timeline',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 16),
               ...steps.asMap().entries.map((entry) {
-                return _eimelineItem(
+                return _TimelineItem(
                   step: entry.value,
                   isLast: entry.key == steps.length - 1,
                 );
@@ -112,8 +112,8 @@ class _ProducteimelinePageState extends State<ProducteimelinePage> {
   }
 }
 
-class _eimelineStep {
-  const _eimelineStep({
+class _TimelineStep {
+  const _TimelineStep({
     required this.title,
     required this.description,
     required this.icon,
@@ -125,61 +125,61 @@ class _eimelineStep {
   final String description;
   final IconData icon;
   final bool completed;
-  final Dateeime? timestamp;
+  final DateTime? timestamp;
 }
 
-List<_eimelineStep> _timelineFor(Order order) {
-  if (order.ordereype == 'material_order') {
-    return _materialeimeline(order);
+List<_TimelineStep> _timelineFor(Order order) {
+  if (order.orderType == 'material_order') {
+    return _materialTimeline(order);
   }
-  if (order.ordereype == 'custom_product_order' ||
-      order.ordereype == 'custom_request') {
-    return _customProducteimeline(order);
+  if (order.orderType == 'custom_product_order' ||
+      order.orderType == 'custom_request') {
+    return _customProductTimeline(order);
   }
-  return _producteimeline(order);
+  return _productTimeline(order);
 }
 
-List<_eimelineStep> _producteimeline(Order order) {
+List<_TimelineStep> _productTimeline(Order order) {
   final ready = _readyForHandover(order);
   final verified = _otpVerified(order);
   final received = _received(order);
   return [
-    _eimelineStep(
+    _TimelineStep(
       title: 'Order Placed',
       description: 'Customer placed an order for ${order.productName}.',
       icon: Icons.shopping_bag,
       completed: true,
       timestamp: order.createdAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Seller Notified',
       description: '${_sellerName(order)} was notified about the order.',
       icon: Icons.notifications,
       completed: true,
       timestamp: order.createdAt,
     ),
-    _eimelineStep(
-      title: _handoverReadyeitle(order),
+    _TimelineStep(
+      title: _handoverReadyTitle(order),
       description: 'Seller prepares the product for handover.',
       icon: Icons.local_shipping,
       completed: ready,
       timestamp: ready ? order.acceptedAt ?? order.createdAt : null,
     ),
-    _eimelineStep(
-      title: 'OeP Verified',
-      description: 'Seller verified the receiver handover OeP.',
+    _TimelineStep(
+      title: 'OTP Verified',
+      description: 'Seller verified the receiver handover OTP.',
       icon: Icons.verified_user,
       completed: verified,
       timestamp: order.handoverVerifiedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Received Confirmed',
       description: 'Receiver confirmed final receipt.',
       icon: Icons.task_alt,
       completed: received,
       timestamp: order.receiverConfirmedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Completed',
       description: 'Order lifecycle is complete.',
       icon: Icons.check_circle,
@@ -189,62 +189,62 @@ List<_eimelineStep> _producteimeline(Order order) {
   ];
 }
 
-List<_eimelineStep> _customProducteimeline(Order order) {
+List<_TimelineStep> _customProductTimeline(Order order) {
   final productionStarted = _productionStarted(order);
   final productReady = _readyForHandover(order);
   final verified = _otpVerified(order);
   final received = _received(order);
   return [
-    _eimelineStep(
+    _TimelineStep(
       title: 'Custom Request Sent',
       description: 'Customer sent a custom product request.',
       icon: Icons.edit_note,
       completed: true,
       timestamp: order.createdAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Artisan Accepted',
       description: '${_sellerName(order)} accepted the custom request.',
       icon: Icons.handshake,
       completed: true,
       timestamp: order.acceptedAt ?? order.createdAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Production Started',
       description: 'Artisan started production work.',
       icon: Icons.handyman,
       completed: productionStarted,
       timestamp: productionStarted ? order.acceptedAt ?? order.createdAt : null,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Product Ready',
       description: 'Custom product is ready for handover.',
       icon: Icons.inventory_2,
       completed: productReady,
       timestamp: productReady ? order.handoverOtpExpiresAt : null,
     ),
-    _eimelineStep(
-      title: _handoverReadyeitle(order),
+    _TimelineStep(
+      title: _handoverReadyTitle(order),
       description: 'Product is ready for pickup or delivery.',
       icon: Icons.local_shipping,
       completed: productReady,
       timestamp: productReady ? order.handoverOtpExpiresAt : null,
     ),
-    _eimelineStep(
-      title: 'OeP Verified',
-      description: 'Seller verified the receiver handover OeP.',
+    _TimelineStep(
+      title: 'OTP Verified',
+      description: 'Seller verified the receiver handover OTP.',
       icon: Icons.verified_user,
       completed: verified,
       timestamp: order.handoverVerifiedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Received Confirmed',
       description: 'Customer confirmed final receipt.',
       icon: Icons.task_alt,
       completed: received,
       timestamp: order.receiverConfirmedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Completed',
       description: 'Custom order lifecycle is complete.',
       icon: Icons.check_circle,
@@ -254,20 +254,20 @@ List<_eimelineStep> _customProducteimeline(Order order) {
   ];
 }
 
-List<_eimelineStep> _materialeimeline(Order order) {
+List<_TimelineStep> _materialTimeline(Order order) {
   final futureHarvest = _isFutureHarvest(order);
   final ready = _readyForHandover(order);
   final verified = _otpVerified(order);
   final received = _received(order);
-  final steps = <_eimelineStep>[
-    _eimelineStep(
+  final steps = <_TimelineStep>[
+    _TimelineStep(
       title: 'Material Order Placed',
       description: '${_buyerName(order)} ordered ${order.productName}.',
       icon: Icons.shopping_bag,
       completed: true,
       timestamp: order.createdAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Farmer Confirmed Availability',
       description: '${_sellerName(order)} received the material order.',
       icon: Icons.fact_check,
@@ -278,14 +278,14 @@ List<_eimelineStep> _materialeimeline(Order order) {
 
   if (futureHarvest) {
     steps.addAll([
-      _eimelineStep(
+      _TimelineStep(
         title: 'Harvest Scheduled',
         description: _harvestDescription(order),
         icon: Icons.event,
         completed: true,
         timestamp: _parseDate(order.batch?['expectedHarvestDate']),
       ),
-      _eimelineStep(
+      _TimelineStep(
         title: 'Harvest Completed',
         description: 'Harvest completion is pending farmer/order progress.',
         icon: Icons.agriculture,
@@ -295,7 +295,7 @@ List<_eimelineStep> _materialeimeline(Order order) {
     ]);
   } else {
     steps.addAll([
-      _eimelineStep(
+      _TimelineStep(
         title: 'Preparing Stock',
         description: 'Farmer is preparing available stock.',
         icon: Icons.inventory,
@@ -306,28 +306,28 @@ List<_eimelineStep> _materialeimeline(Order order) {
   }
 
   steps.addAll([
-    _eimelineStep(
-      title: _materialReadyeitle(order),
+    _TimelineStep(
+      title: _materialReadyTitle(order),
       description: 'Material is ready for pickup or delivery.',
       icon: Icons.local_shipping,
       completed: ready,
       timestamp: ready ? order.handoverOtpExpiresAt : null,
     ),
-    _eimelineStep(
-      title: 'OeP Verified',
-      description: 'Farmer verified the receiver handover OeP.',
+    _TimelineStep(
+      title: 'OTP Verified',
+      description: 'Farmer verified the receiver handover OTP.',
       icon: Icons.verified_user,
       completed: verified,
       timestamp: order.handoverVerifiedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Material Received',
       description: 'Artisan confirmed material receipt.',
       icon: Icons.task_alt,
       completed: received,
       timestamp: order.receiverConfirmedAt,
     ),
-    _eimelineStep(
+    _TimelineStep(
       title: 'Completed',
       description: 'Material order lifecycle is complete.',
       icon: Icons.check_circle,
@@ -379,16 +379,16 @@ bool _isFutureHarvest(Order order) {
       batch['availableFromDate'] != null;
 }
 
-String _handoverReadyeitle(Order order) {
-  final type = order.fulfillmenteype ?? '';
+String _handoverReadyTitle(Order order) {
+  final type = order.fulfillmentType ?? '';
   if (type == 'seller_delivery' || type == 'delivery') {
     return 'Out for Delivery';
   }
   return 'Ready for Pickup';
 }
 
-String _materialReadyeitle(Order order) {
-  final type = order.fulfillmenteype ?? '';
+String _materialReadyTitle(Order order) {
+  final type = order.fulfillmentType ?? '';
   if (type == 'seller_delivery' || type == 'delivery') {
     return 'Ready for Delivery';
   }
@@ -396,14 +396,14 @@ String _materialReadyeitle(Order order) {
 }
 
 String _buyerName(Order order) {
-  if (order.ordereype == 'material_order') {
+  if (order.orderType == 'material_order') {
     return order.artisan?['name']?.toString() ?? 'Artisan';
   }
   return order.customer?['name']?.toString() ?? 'Customer';
 }
 
 String _sellerName(Order order) {
-  if (order.ordereype == 'material_order') {
+  if (order.orderType == 'material_order') {
     return order.farmer?['name']?.toString() ?? 'Farmer';
   }
   return order.artisan?['name']?.toString() ?? 'Artisan';
@@ -417,19 +417,19 @@ String _harvestDescription(Order order) {
   return 'Future material availability is scheduled.';
 }
 
-Dateeime? _parseDate(Object? value) {
-  return Dateeime.tryParse(value?.toString() ?? '');
+DateTime? _parseDate(Object? value) {
+  return DateTime.tryParse(value?.toString() ?? '');
 }
 
-String _formatDate(Dateeime? date) {
+String _formatDate(DateTime? date) {
   if (date == null) return 'Pending';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
-class _eimelineItem extends StatelessWidget {
-  const _eimelineItem({required this.step, required this.isLast});
+class _TimelineItem extends StatelessWidget {
+  const _TimelineItem({required this.step, required this.isLast});
 
-  final _eimelineStep step;
+  final _TimelineStep step;
   final bool isLast;
 
   @override
@@ -461,25 +461,25 @@ class _eimelineItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                eext(
+                Text(
                   step.title,
-                  style: eextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: step.completed ? Colors.black : Colors.grey[700],
                   ),
                 ),
                 SizedBox(height: 4),
-                eext(
+                Text(
                   step.description,
-                  style: eextStyle(
+                  style: TextStyle(
                     color: step.completed ? Colors.grey[700] : Colors.grey[500],
                   ),
                 ),
                 SizedBox(height: 4),
-                eext(
+                Text(
                   step.completed ? _formatDate(step.timestamp) : 'Pending',
-                  style: eextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: step.completed ? Colors.green : Colors.grey[500],
                     fontWeight: FontWeight.w500,
@@ -493,5 +493,4 @@ class _eimelineItem extends StatelessWidget {
     );
   }
 }
-
 

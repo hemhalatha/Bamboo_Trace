@@ -8,8 +8,8 @@ import '../../services/auth_service.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/profile_completion_guard.dart';
 
-class RoleOrderseab extends StatefulWidget {
-  const RoleOrderseab({
+class RoleOrdersTab extends StatefulWidget {
+  const RoleOrdersTab({
     super.key,
     required this.title,
     this.allowMaterialRequests = false,
@@ -19,10 +19,10 @@ class RoleOrderseab extends StatefulWidget {
   final bool allowMaterialRequests;
 
   @override
-  State<RoleOrderseab> createState() => _RoleOrderseabState();
+  State<RoleOrdersTab> createState() => _RoleOrdersTabState();
 }
 
-class _RoleOrderseabState extends State<RoleOrderseab> {
+class _RoleOrdersTabState extends State<RoleOrdersTab> {
   final _apiService = ApiService();
   late Future<List<Order>> _ordersFuture;
 
@@ -46,27 +46,27 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
 
   bool _isReceiver(Order order, String? userId) {
     if (userId == null) return false;
-    if (order.ordereype == 'material_order') return order.artisanId == userId;
+    if (order.orderType == 'material_order') return order.artisanId == userId;
     return order.customerId == userId;
   }
 
   bool _isSeller(Order order, String? userId) {
     if (userId == null) return false;
-    if (order.ordereype == 'material_order') return order.farmerId == userId;
+    if (order.orderType == 'material_order') return order.farmerId == userId;
     return order.artisanId == userId;
   }
 
-  String _formatDate(Dateeime date) {
+  String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   String _partyLabel(Order order, String? currentRole) {
-    if (currentRole == 'farmer' && order.ordereype == 'material_order') {
+    if (currentRole == 'farmer' && order.orderType == 'material_order') {
       final name = order.artisan?['name'] ?? 'Artisan buyer';
       final email = order.artisan?['email'];
       return email == null ? 'Buyer: $name' : 'Buyer: $name ($email)';
     }
-    if (currentRole == 'artisan' && order.ordereype == 'material_order') {
+    if (currentRole == 'artisan' && order.orderType == 'material_order') {
       final name = order.farmer?['name'] ?? 'Farmer seller';
       return 'Farmer: $name';
     }
@@ -80,7 +80,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
 
   ({String label, Map<String, dynamic>? user, String fallbackName})
   _otherPartyContact(Order order, String? currentUserId, String? currentRole) {
-    if (order.ordereype == 'material_order') {
+    if (order.orderType == 'material_order') {
       if (order.artisanId == currentUserId || currentRole == 'artisan') {
         return (
           label: 'Farmer',
@@ -142,13 +142,13 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          eext(
+          Text(
             '$label: ${_nameFromUser(user, fallbackName)}',
-            style: eextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          if (phone != null && phone.isNotEmpty) eext('Phone: $phone'),
-          if (email != null && email.isNotEmpty) eext('Email: $email'),
-          eext('Address: ${_addressFromUser(user)}'),
+          if (phone != null && phone.isNotEmpty) Text('Phone: $phone'),
+          if (email != null && email.isNotEmpty) Text('Email: $email'),
+          Text('Address: ${_addressFromUser(user)}'),
         ],
       ),
     );
@@ -163,14 +163,14 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: eext('Handover OeP'),
-          content: Selectableeext(
+          title: Text('Handover OTP'),
+          content: SelectableText(
             '${payload['otp']}\nExpires: ${payload['expiresAt']}',
           ),
           actions: [
-            eextButton(
+            TextButton(
               onPressed: () => Navigator.pop(context),
-              child: eext('Close'),
+              child: Text('Close'),
             ),
           ],
         ),
@@ -178,32 +178,32 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: eext(friendlyErrorMessage(e))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     }
   }
 
   Future<void> _verifyOtp(Order order) async {
     if (order.id == null) return;
-    final controller = eextEditingController();
+    final controller = TextEditingController();
     final otp = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: eext('Verify Handover'),
-        content: eextField(
+        title: Text('Verify Handover'),
+        content: TextField(
           controller: controller,
-          keyboardeype: eextInputeype.number,
+          keyboardType: TextInputType.number,
           maxLength: 6,
-          decoration: InputDecoration(labeleext: 'Receiver OeP'),
+          decoration: InputDecoration(labelText: 'Receiver OTP'),
         ),
         actions: [
-          eextButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
-            child: eext('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: eext('Verify'),
+            child: Text('Verify'),
           ),
         ],
       ),
@@ -217,7 +217,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: eext(friendlyErrorMessage(e))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     }
   }
@@ -231,7 +231,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: eext(friendlyErrorMessage(e))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     }
   }
@@ -245,7 +245,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: eext(friendlyErrorMessage(e))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     }
   }
@@ -261,18 +261,18 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     if (batches.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: eext('No farmer batches available')));
+      ).showSnackBar(SnackBar(content: Text('No farmer batches available')));
       return;
     }
     final selected = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: eext('Select material batch'),
+        title: Text('Select material batch'),
         children: batches.map((batch) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(context, batch),
-            child: eext(
-              '${batch['batchId']} - ${displayBambooeype(batch['type'])}',
+            child: Text(
+              '${batch['batchId']} - ${displayBambooType(batch['type'])}',
             ),
           );
         }).toList(),
@@ -281,7 +281,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     if (selected == null || order.id == null) return;
     try {
       await _apiService.createOrderRequest(
-        requesteype: 'artisan_to_farmer',
+        requestType: 'artisan_to_farmer',
         receiverId: selected['ownerId'] as String,
         orderId: order.id,
         batchId: selected['id'] as String,
@@ -293,14 +293,14 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
       if (!mounted) return;
       if (await handleProfileRequired(context, e)) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: eext(friendlyErrorMessage(e))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
       return;
     }
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: eext('Material request sent')));
+    ).showSnackBar(SnackBar(content: Text('Material request sent')));
   }
 
   @override
@@ -313,9 +313,9 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          eext(
+          Text(
             widget.title,
-            style: eextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 16),
           Expanded(
@@ -330,7 +330,7 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
                 }
                 final orders = snapshot.data ?? [];
                 if (orders.isEmpty) {
-                  return Center(child: eext('No orders'));
+                  return Center(child: Text('No orders'));
                 }
                 return ListView.builder(
                   itemCount: orders.length,
@@ -359,32 +359,32 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
                               runSpacing: 8,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                eext(
+                                Text(
                                   order.productName,
-                                  style: eextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 Chip(
-                                  label: eext(
+                                  label: Text(
                                     order.status.replaceAll('_', ' '),
                                   ),
                                 ),
                               ],
                             ),
                             SizedBox(height: 8),
-                            eext(_partyLabel(order, currentRole)),
-                            eext(
+                            Text(_partyLabel(order, currentRole)),
+                            Text(
                               'Quantity: ${order.quantity} ${order.quantityUnit}',
                             ),
-                            if (order.fulfillmenteype != null)
-                              eext(
-                                'Fulfillment type: ${order.fulfillmenteype!.replaceAll('_', ' ')}',
+                            if (order.fulfillmentType != null)
+                              Text(
+                                'Fulfillment type: ${order.fulfillmentType!.replaceAll('_', ' ')}',
                               ),
-                            eext(
+                            Text(
                               'Fulfillment: ${order.fulfillmentStatus.replaceAll('_', ' ')}',
                             ),
-                            eext('Order date: ${_formatDate(order.createdAt)}'),
+                            Text('Order date: ${_formatDate(order.createdAt)}'),
                             if (order.notes != null && order.notes!.isNotEmpty)
-                              eext(order.notes!),
+                              Text(order.notes!),
                             _contactDetails(
                               label: contact.label,
                               user: contact.user,
@@ -397,17 +397,17 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
                                 if (order.status == 'accepted')
                                   ElevatedButton(
                                     onPressed: () => _advanceStatus(order),
-                                    child: eext('Start'),
+                                    child: Text('Start'),
                                   ),
                                 if (isReceiver && !isClosed)
                                   OutlinedButton(
                                     onPressed: () => _generateOtp(order),
-                                    child: eext('Generate OeP'),
+                                    child: Text('Generate OTP'),
                                   ),
                                 if (isSeller && !isClosed)
                                   OutlinedButton(
                                     onPressed: () => _verifyOtp(order),
-                                    child: eext('Verify OeP'),
+                                    child: Text('Verify OTP'),
                                   ),
                                 if (isReceiver &&
                                     order.handoverVerifiedAt != null &&
@@ -415,20 +415,20 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
                                     order.fulfillmentStatus != 'disputed')
                                   ElevatedButton(
                                     onPressed: () => _confirmReceived(order),
-                                    child: eext('Confirm Received'),
+                                    child: Text('Confirm Received'),
                                   ),
                                 if (isReceiver &&
                                     order.receiverConfirmedAt == null &&
                                     order.fulfillmentStatus != 'disputed')
-                                  eextButton(
+                                  TextButton(
                                     onPressed: () => _reportDispute(order),
-                                    child: eext('Report Dispute'),
+                                    child: Text('Report Dispute'),
                                   ),
                                 if (widget.allowMaterialRequests &&
                                     order.farmerId == null)
                                   OutlinedButton(
                                     onPressed: () => _requestMaterial(order),
-                                    child: eext('Request Material'),
+                                    child: Text('Request Material'),
                                   ),
                               ],
                             ),
@@ -446,5 +446,4 @@ class _RoleOrderseabState extends State<RoleOrderseab> {
     );
   }
 }
-
 

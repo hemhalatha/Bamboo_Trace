@@ -6,12 +6,12 @@ import '../../utils/error_messages.dart';
 import '../../widgets/remote_image.dart';
 import '../../widgets/stat_card.dart';
 
-class CustomerHomeeab extends StatefulWidget {
+class CustomerHomeTab extends StatefulWidget {
   @override
-  State<CustomerHomeeab> createState() => _CustomerHomeeabState();
+  State<CustomerHomeTab> createState() => _CustomerHomeTabState();
 }
 
-class _CustomerHomeeabState extends State<CustomerHomeeab> {
+class _CustomerHomeTabState extends State<CustomerHomeTab> {
   final _apiService = ApiService();
   late Future<List<Map<String, dynamic>>> _productsFuture;
   late Future<Map<String, dynamic>> _statsFuture;
@@ -141,18 +141,18 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  eext(
+                  Text(
                     'Sustainable Bamboo Products',
-                    style: eextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8),
-                  eext(
-                    'erace your product journey',
-                    style: eextStyle(color: Colors.white70, fontSize: 14),
+                  Text(
+                    'Trace your product journey',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
@@ -165,11 +165,11 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              eext(
+              Text(
                 'Featured Products',
-                style: eextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              eextButton(onPressed: () {}, child: eext('View All')),
+              TextButton(onPressed: () {}, child: Text('View All')),
             ],
           ),
           SizedBox(height: 10),
@@ -185,7 +185,7 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
               }
               final products = snapshot.data ?? [];
               if (products.isEmpty) {
-                return eext('No products available yet');
+                return Text('No products available yet');
               }
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -213,7 +213,7 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: InkWell(
-                          oneap: canOrder
+                          onTap: canOrder
                               ? () {
                                   Navigator.push(
                                     context,
@@ -249,14 +249,14 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: eext(
+                                            child: Text(
                                               product['productName'] ?? '',
-                                              style: eextStyle(
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 14,
                                               ),
                                               maxLines: 1,
-                                              overflow: eextOverflow.ellipsis,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                           Container(
@@ -273,9 +273,9 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                                                 color: _statusColor(status),
                                               ),
                                             ),
-                                            child: eext(
+                                            child: Text(
                                               status.replaceAll('_', ' '),
-                                              style: eextStyle(
+                                              style: TextStyle(
                                                 color: _statusColor(status),
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w600,
@@ -285,43 +285,43 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                                         ],
                                       ),
                                       SizedBox(height: 4),
-                                      eext(
-                                        product['producteype'] ?? '',
-                                        style: eextStyle(
+                                      Text(
+                                        product['productType'] ?? '',
+                                        style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 12,
                                         ),
                                         maxLines: 1,
-                                        overflow: eextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      eext(
+                                      Text(
                                         'By ${product['artisanName'] ?? 'Artisan'}',
-                                        style: eextStyle(
+                                        style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 12,
                                         ),
                                         maxLines: 1,
-                                        overflow: eextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      eext(
+                                      Text(
                                         product['artisanLocation'] ??
                                             'Location not specified',
-                                        style: eextStyle(
+                                        style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 12,
                                         ),
                                         maxLines: 1,
-                                        overflow: eextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       SizedBox(height: 8),
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: eext(
+                                            child: Text(
                                               canOrder
                                                   ? '$quantity available'
                                                   : 'Not available to order',
-                                              style: eextStyle(
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: canOrder
                                                     ? Colors.green[700]
@@ -329,7 +329,7 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                                                 fontSize: 12,
                                               ),
                                               maxLines: 1,
-                                              overflow: eextOverflow.ellipsis,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                           Icon(
@@ -374,13 +374,13 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        eext(
+                        Text(
                           'Product Orders',
-                          style: eextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        eext(
+                        Text(
                           'Select a product to buy from its artisan seller',
-                          style: eextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
                     ),
@@ -389,11 +389,11 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: eext('Select a product to place an order'),
+                          content: Text('Select a product to place an order'),
                         ),
                       );
                     },
-                    child: eext('Buy'),
+                    child: Text('Buy'),
                   ),
                 ],
               ),
@@ -417,13 +417,13 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        eext(
+                        Text(
                           'Custom Request',
-                          style: eextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        eext(
+                        Text(
                           'Ask a specific artisan to make something not listed for sale',
-                          style: eextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
                     ),
@@ -435,7 +435,7 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
                         MaterialPageRoute(builder: (_) => CustomRequestPage()),
                       );
                     },
-                    child: eext('Request'),
+                    child: Text('Request'),
                   ),
                 ],
               ),
@@ -446,5 +446,4 @@ class _CustomerHomeeabState extends State<CustomerHomeeab> {
     );
   }
 }
-
 

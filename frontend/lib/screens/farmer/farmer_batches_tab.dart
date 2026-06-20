@@ -5,10 +5,10 @@ import '../../services/api_service.dart';
 import '../../utils/error_messages.dart';
 import '../../widgets/remote_image.dart';
 
-class FarmerBatcheseab extends StatelessWidget {
+class FarmerBatchesTab extends StatelessWidget {
   final ApiService _apiService = ApiService();
 
-  FarmerBatcheseab({super.key});
+  FarmerBatchesTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,7 @@ class FarmerBatcheseab extends StatelessWidget {
           return Center(child: Text(friendlyErrorMessage(snapshot.error)));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: eext('No bamboo/material batches listed yet.'));
+          return Center(child: Text('No bamboo/material batches listed yet.'));
         }
 
         final batches = snapshot.data!;
@@ -56,24 +56,24 @@ class FarmerBatcheseab extends StatelessWidget {
                       runSpacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        eext(
+                        Text(
                           'Batch ID: ${data['batchId']}',
-                          style: eextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Chip(
-                          label: eext(status.toString().replaceAll('_', ' ')),
+                          label: Text(status.toString().replaceAll('_', ' ')),
                         ),
                       ],
                     ),
                     SizedBox(height: 8),
-                    eext('Bamboo type: ${displayBambooeype(data['type'])}'),
-                    eext('Available: $quantity $unit'),
-                    eext('Location: ${data['location']}'),
-                    if (data['price'] != null) eext('Price: ${data['price']}'),
+                    Text('Bamboo type: ${displayBambooType(data['type'])}'),
+                    Text('Available: $quantity $unit'),
+                    Text('Location: ${data['location']}'),
+                    if (data['price'] != null) Text('Price: ${data['price']}'),
                     if (availableFrom != null)
-                      eext('Available from: $availableFrom'),
+                      Text('Available from: $availableFrom'),
                     if (harvestDate != null)
-                      eext('Expected harvest: $harvestDate'),
+                      Text('Expected harvest: $harvestDate'),
                   ],
                 ),
               ),
@@ -84,5 +84,4 @@ class FarmerBatcheseab extends StatelessWidget {
     );
   }
 }
-
 
