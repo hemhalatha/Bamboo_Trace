@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../auth/login_page.dart';
+import 'edit_profile_page.dart';
 
 class ProfileTab extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
@@ -17,6 +18,11 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().currentUser;
+    final roleLocationLabel = user?.role == 'artisan'
+        ? 'Workshop location'
+        : user?.role == 'farmer'
+            ? 'Farm/pickup location'
+            : 'Delivery address';
 
     return Padding(
       padding: EdgeInsets.all(16),
@@ -36,6 +42,27 @@ class ProfileTab extends StatelessWidget {
             user?.email ?? 'email@example.com',
             style: TextStyle(color: Colors.grey[600]),
           ),
+          SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    roleLocationLabel,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(user?.fullAddress ?? 'Not specified'),
+                  if (user?.phone != null && user!.phone!.isNotEmpty) ...[
+                    SizedBox(height: 8),
+                    Text('Phone: ${user.phone}'),
+                  ],
+                ],
+              ),
+            ),
+          ),
           SizedBox(height: 30),
           Card(
             child: Column(
@@ -44,7 +71,16 @@ class ProfileTab extends StatelessWidget {
                   leading: Icon(Icons.edit),
                   title: Text('Edit Profile'),
                   trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: () {},
+                  onTap: user == null
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditProfilePage(user: user),
+                            ),
+                          );
+                        },
                 ),
                 Divider(),
                 ListTile(

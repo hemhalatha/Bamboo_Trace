@@ -1,7 +1,15 @@
 import re
-from datetime import datetime
+from datetime import date, datetime, time, timezone
+from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.models import (
     NotificationType,
@@ -14,6 +22,21 @@ from app.models import (
     RequestType,
     UserRole,
 )
+from app.profile_completion import is_profile_complete
+
+
+def _parse_date_only_datetime(value):
+    if isinstance(value, str):
+        stripped_value = value.strip()
+        if stripped_value == "":
+            return None
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", stripped_value):
+            return datetime.combine(
+                date.fromisoformat(stripped_value),
+                time.min,
+                tzinfo=timezone.utc,
+            )
+    return value
 
 
 class UserPublic(BaseModel):
@@ -21,9 +44,68 @@ class UserPublic(BaseModel):
     email: EmailStr
     name: str
     role: UserRole
+    phone: str | None = None
+    address_line: str | None = Field(default=None, alias="addressLine")
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    landmark: str | None = None
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
+
+    @computed_field(alias="profileComplete")
+    @property
+    def profile_complete(self) -> bool:
+        return is_profile_complete(self)
+
+
+class UserProfileUpdate(BaseModel):
+    phone: str | None = Field(default=None, max_length=30)
+    address_line: str | None = Field(default=None, alias="addressLine", max_length=255)
+    city: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=120)
+    pincode: str | None = Field(default=None, max_length=20)
+    landmark: str | None = Field(default=None, max_length=255)
+
+    model_config = {"populate_by_name": True}
+
+    @field_validator(
+        "phone",
+        "address_line",
+        "city",
+        "district",
+        "state",
+        "pincode",
+        "landmark",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_text(cls, value):
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not re.fullmatch(r"[0-9+\-\s()]{7,30}", value):
+            raise ValueError("Phone must be a valid contact number")
+        return value
+
+    @field_validator("pincode")
+    @classmethod
+    def validate_pincode(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not re.fullmatch(r"[0-9A-Za-z\-\s]{3,20}", value):
+            raise ValueError("Pincode must be valid")
+        return value
 
 
 class SignupRequest(BaseModel):
@@ -53,6 +135,9 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserPublic
+    profile_complete: bool = Field(alias="profileComplete")
+
+    model_config = {"populate_by_name": True}
 
 
 class BatchCreate(BaseModel):
@@ -63,12 +148,18 @@ class BatchCreate(BaseModel):
     quantity_unit: str = Field(default="kg", alias="quantityUnit", min_length=1, max_length=40)
     price: float | None = Field(default=None, ge=0)
     location: str = Field(min_length=1, max_length=255)
+    image_url: str | None = Field(default=None, alias="imageUrl", max_length=500)
     available_now: bool = Field(default=True, alias="availableNow")
     available_from_date: datetime | None = Field(default=None, alias="availableFromDate")
     expected_harvest_date: datetime | None = Field(default=None, alias="expectedHarvestDate")
     status: BatchStatus | None = None
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("available_from_date", "expected_harvest_date", mode="before")
+    @classmethod
+    def parse_listing_dates(cls, value):
+        return _parse_date_only_datetime(value)
 
     @model_validator(mode="after")
     def validate_availability(self) -> "BatchCreate":
@@ -123,20 +214,86 @@ class BatchPublic(BatchCreate):
 class MaterialListingPublic(BatchPublic):
     farmer_name: str = Field(alias="farmerName")
     farmer_location: str = Field(alias="farmerLocation")
+    farmer_city: str | None = Field(default=None, alias="farmerCity")
+    farmer_district: str | None = Field(default=None, alias="farmerDistrict")
 
     model_config = {"populate_by_name": True}
 
 
 class ProjectCreate(BaseModel):
-    source_batch_id: str = Field(alias="sourceBatchId", min_length=1, max_length=80)
-    product_type: str = Field(alias="productType", min_length=1, max_length=80)
+    source_batch_id: str | None = Field(
+        default=None, alias="sourceBatchId", max_length=80
+    )
+    product_type: str = Field(default="Product", alias="productType", min_length=1, max_length=80)
     product_name: str = Field(alias="productName", min_length=1, max_length=160)
-    quantity: int = Field(gt=0)
+    description: str | None = Field(default=None, max_length=1000)
+    price: float | None = Field(default=None, ge=0)
+    bamboo_type: str | None = Field(default=None, alias="bambooType", max_length=80)
+    material_source: str | None = Field(default=None, alias="materialSource", max_length=80)
+    source_details: str | None = Field(default=None, alias="sourceDetails", max_length=500)
+    quantity: int = Field(default=1, ge=0)
     is_hidden: bool = Field(default=False, alias="isHidden")
-    estimated_days: int = Field(alias="estimatedDays", gt=0)
-    progress: float = Field(ge=0, le=1)
+    status: Literal["draft", "available", "ordered", "sold", "archived"] = "draft"
+    estimated_days: int = Field(default=1, alias="estimatedDays", gt=0)
+    progress: float = Field(default=0, ge=0, le=1)
+    image_url: str | None = Field(default=None, alias="imageUrl", max_length=500)
 
     model_config = {"populate_by_name": True}
+
+    @field_validator(
+        "source_batch_id",
+        "description",
+        "bamboo_type",
+        "material_source",
+        "source_details",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_project_text(cls, value):
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+
+class ProjectUpdate(BaseModel):
+    source_batch_id: str | None = Field(
+        default=None, alias="sourceBatchId", max_length=80
+    )
+    product_type: str | None = Field(
+        default=None, alias="productType", min_length=1, max_length=80
+    )
+    product_name: str | None = Field(
+        default=None, alias="productName", min_length=1, max_length=160
+    )
+    description: str | None = Field(default=None, max_length=1000)
+    price: float | None = Field(default=None, ge=0)
+    bamboo_type: str | None = Field(default=None, alias="bambooType", max_length=80)
+    material_source: str | None = Field(default=None, alias="materialSource", max_length=80)
+    source_details: str | None = Field(default=None, alias="sourceDetails", max_length=500)
+    quantity: int | None = Field(default=None, ge=0)
+    is_hidden: bool | None = Field(default=None, alias="isHidden")
+    status: Literal["draft", "available", "ordered", "sold", "archived"] | None = None
+    estimated_days: int | None = Field(default=None, alias="estimatedDays", gt=0)
+    progress: float | None = Field(default=None, ge=0, le=1)
+    image_url: str | None = Field(default=None, alias="imageUrl", max_length=500)
+
+    model_config = {"populate_by_name": True}
+
+    @field_validator(
+        "source_batch_id",
+        "description",
+        "bamboo_type",
+        "material_source",
+        "source_details",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_project_text(cls, value):
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
 
 
 class ProjectPublic(ProjectCreate):
@@ -150,8 +307,31 @@ class ProjectPublic(ProjectCreate):
 class ProductListingPublic(ProjectPublic):
     artisan_name: str = Field(alias="artisanName")
     artisan_location: str = Field(default="Not specified", alias="artisanLocation")
+    artisan_city: str | None = Field(default=None, alias="artisanCity")
+    artisan_district: str | None = Field(default=None, alias="artisanDistrict")
 
     model_config = {"populate_by_name": True}
+
+
+class UserSummary(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    role: UserRole
+
+    model_config = {"from_attributes": True}
+
+
+class UserOrderContact(UserSummary):
+    phone: str | None = None
+    address_line: str | None = Field(default=None, alias="addressLine")
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    landmark: str | None = None
+
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class OrderCreate(BaseModel):
@@ -188,6 +368,11 @@ class OrderPublic(OrderCreate):
     receiver_confirmed_at: datetime | None = Field(
         default=None, alias="receiverConfirmedAt"
     )
+    customer: UserOrderContact | None = None
+    artisan: UserOrderContact | None = None
+    farmer: UserOrderContact | None = None
+    product: ProjectPublic | None = None
+    batch: BatchPublic | None = None
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
@@ -238,21 +423,14 @@ class OrderRequestCreate(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-class UserSummary(BaseModel):
-    id: str
-    name: str
-    email: EmailStr
-    role: UserRole
-
-    model_config = {"from_attributes": True}
-
-
 class ArtisanPublic(BaseModel):
     id: str
     name: str
     email: EmailStr
     role: UserRole
     location: str = "Not specified"
+    city: str | None = None
+    district: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -292,8 +470,14 @@ class CustomOrderRequestCreate(BaseModel):
     quantity: int = Field(gt=0)
     budget: float | None = Field(default=None, ge=0)
     deadline: datetime | None = None
+    image_url: str | None = Field(default=None, alias="imageUrl", max_length=500)
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("deadline", mode="before")
+    @classmethod
+    def parse_deadline(cls, value):
+        return _parse_date_only_datetime(value)
 
     @model_validator(mode="after")
     def validate_target(self) -> "CustomOrderRequestCreate":
@@ -322,6 +506,7 @@ class CustomOrderRequestPublic(BaseModel):
     quantity: int
     budget: float | None = None
     deadline: datetime | None = None
+    image_url: str | None = Field(default=None, alias="imageUrl")
     status: CustomRequestStatus
     created_at: datetime = Field(alias="createdAt")
     responded_at: datetime | None = Field(default=None, alias="respondedAt")

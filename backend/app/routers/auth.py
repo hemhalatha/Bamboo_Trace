@@ -14,6 +14,7 @@ from app.core.security import (
 )
 from app.deps import get_current_user
 from app.models import User
+from app.profile_completion import is_profile_complete
 from app.schemas import (
     LoginRequest,
     SignupRequest,
@@ -27,7 +28,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 FAILED_LOGIN_WINDOW_SECONDS = 15 * 60
+MAX_SIGNUP_ATTEMPTS = 10
+SIGNUP_WINDOW_SECONDS = 15 * 60
 _login_attempts: dict[str, list[float]] = {}
+_signup_attempts: dict[str, list[float]] = {}
 
 
 def _login_rate_limit_key(request: Request, email: str) -> str:
@@ -35,19 +39,26 @@ def _login_rate_limit_key(request: Request, email: str) -> str:
     return f"{client_host}:{email}"
 
 
-def _recent_failed_attempts(key: str) -> list[float]:
+def _signup_rate_limit_key(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _recent_attempts(bucket: dict[str, list[float]], key: str, window: int) -> list[float]:
     now = monotonic()
     attempts = [
         timestamp
-        for timestamp in _login_attempts.get(key, [])
-        if now - timestamp < FAILED_LOGIN_WINDOW_SECONDS
+        for timestamp in bucket.get(key, [])
+        if now - timestamp < window
     ]
-    _login_attempts[key] = attempts
+    bucket[key] = attempts
     return attempts
 
 
 def _ensure_login_not_rate_limited(key: str) -> None:
-    if len(_recent_failed_attempts(key)) >= MAX_FAILED_LOGIN_ATTEMPTS:
+    if (
+        len(_recent_attempts(_login_attempts, key, FAILED_LOGIN_WINDOW_SECONDS))
+        >= MAX_FAILED_LOGIN_ATTEMPTS
+    ):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many failed login attempts. Please try again later.",
@@ -55,13 +66,28 @@ def _ensure_login_not_rate_limited(key: str) -> None:
 
 
 def _record_failed_login(key: str) -> None:
-    attempts = _recent_failed_attempts(key)
+    attempts = _recent_attempts(_login_attempts, key, FAILED_LOGIN_WINDOW_SECONDS)
     attempts.append(monotonic())
     _login_attempts[key] = attempts
 
 
 def _clear_failed_login_attempts(key: str) -> None:
     _login_attempts.pop(key, None)
+
+
+def _ensure_signup_not_rate_limited(key: str) -> None:
+    attempts = _recent_attempts(_signup_attempts, key, SIGNUP_WINDOW_SECONDS)
+    if len(attempts) >= MAX_SIGNUP_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many signup attempts. Please try again later.",
+        )
+
+
+def _record_signup_attempt(key: str) -> None:
+    attempts = _recent_attempts(_signup_attempts, key, SIGNUP_WINDOW_SECONDS)
+    attempts.append(monotonic())
+    _signup_attempts[key] = attempts
 
 
 @router.post(
@@ -71,8 +97,13 @@ def _clear_failed_login_attempts(key: str) -> None:
 )
 def signup(
     payload: SignupRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
+    signup_rate_limit_key = _signup_rate_limit_key(request)
+    _ensure_signup_not_rate_limited(signup_rate_limit_key)
+    _record_signup_attempt(signup_rate_limit_key)
+
     email = payload.email.strip().lower()
     name = payload.name.strip()
 
@@ -134,6 +165,7 @@ def signup(
     return TokenResponse(
         access_token=token,
         user=user,
+        profile_complete=is_profile_complete(user),
     )
 
 
@@ -158,10 +190,7 @@ def login(
         payload.password,
         user.password_hash,
     ):
-        logger.warning(
-            "Failed login attempt for email=%s",
-            email,
-        )
+        logger.warning("Failed login attempt")
         _record_failed_login(rate_limit_key)
 
         raise HTTPException(
@@ -183,11 +212,12 @@ def login(
     return TokenResponse(
         access_token=token,
         user=user,
+        profile_complete=is_profile_complete(user),
     )
 
 
 @router.post("/logout")
-def logout() -> dict[str, str]:
+def logout(current_user: User = Depends(get_current_user)) -> dict[str, str]:
     # JWT is stateless.
     # Client should remove the token locally.
     return {
@@ -203,3 +233,5 @@ def current_user(
     user: User = Depends(get_current_user),
 ) -> User:
     return user
+
+

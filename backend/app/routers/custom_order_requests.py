@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, require_complete_profile
 from app.models import (
     CustomOrderRequest,
     CustomRequestStatus,
@@ -96,6 +96,7 @@ def create_custom_order_request(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only customers can create custom requests",
         )
+    require_complete_profile(current_user)
     artisan: User | None = None
     if payload.target_type == CustomRequestTargetType.specific_artisan:
         artisan = db.get(User, payload.target_artisan_id)
@@ -114,6 +115,7 @@ def create_custom_order_request(
         quantity=payload.quantity,
         budget=payload.budget,
         deadline=payload.deadline,
+        image_url=payload.image_url,
     )
     db.add(request)
     db.flush()
@@ -190,6 +192,26 @@ def list_custom_request_history(
     ]
 
 
+@router.get("/{request_id}", response_model=CustomOrderRequestPublic)
+def get_custom_order_request(
+    request_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CustomOrderRequest:
+    request = db.scalar(
+        select(CustomOrderRequest).where(
+            CustomOrderRequest.id == request_id,
+            _visible_custom_request_filter(current_user),
+        )
+    )
+    if request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Custom request not found",
+        )
+    return _load_details(db, request, current_user)
+
+
 def _get_open_custom_request(
     db: Session,
     request_id: str,
@@ -237,6 +259,7 @@ def accept_custom_order_request(
     db: Session = Depends(get_db),
 ) -> CustomOrderRequest:
     request = _get_open_custom_request(db, request_id, current_user)
+    require_complete_profile(current_user)
     request.status = CustomRequestStatus.accepted
     request.accepted_by_artisan_id = current_user.id
     request.responded_at = now_utc()

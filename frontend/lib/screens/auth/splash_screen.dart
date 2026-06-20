@@ -52,7 +52,10 @@ class _SplashScreenState extends State<SplashScreen> {
       default:
         dashboard = LoginPage();
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => dashboard));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => dashboard),
+    );
   }
 
   @override
@@ -65,9 +68,14 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             Icon(Icons.eco, size: 100, color: Colors.green[700]),
             SizedBox(height: 20),
-            Text('BambooTrace', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            Text(
+              'BambooTrace',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 20),
-            CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!)),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+            ),
           ],
         ),
       ),

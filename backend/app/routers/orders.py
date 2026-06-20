@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.deps import get_current_user, require_roles
+from app.deps import get_current_user, require_roles, require_roles_with_complete_profile
 from app.models import (
     Batch,
     BatchStatus,
@@ -54,19 +54,46 @@ def list_orders(
     else:
         visibility_filter = Order.farmer_id == current_user.id
 
-    return list(
+    orders = list(
         db.scalars(
             select(Order)
             .where(visibility_filter)
             .order_by(Order.created_at.desc())
         )
     )
+    return [_load_order_details(db, order) for order in orders]
+
+
+@router.get("/{order_id}", response_model=OrderPublic)
+def get_order(
+    order_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Order:
+    return _load_order_details(db, _get_visible_order(db, order_id, current_user))
+
+
+def _load_order_details(db: Session, order: Order) -> Order:
+    order.customer = db.get(User, order.customer_id) if order.customer_id else None
+    order.artisan = db.get(User, order.artisan_id) if order.artisan_id else None
+    order.farmer = db.get(User, order.farmer_id) if order.farmer_id else None
+    order.product = db.get(Project, order.product_id) if order.product_id else None
+    order.batch = db.get(Batch, order.batch_id) if order.batch_id else None
+    return order
+
+
+def _mark_order_product_sold(db: Session, order: Order) -> None:
+    if order.order_type != OrderType.product_order or not order.product_id:
+        return
+    product = db.get(Project, order.product_id)
+    if product is not None:
+        product.status = "sold"
 
 
 @router.post("", response_model=OrderPublic, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreate,
-    current_user: User = Depends(require_roles(UserRole.customer)),
+    current_user: User = Depends(require_roles_with_complete_profile(UserRole.customer)),
     db: Session = Depends(get_db),
 ) -> Order:
     order = Order(
@@ -77,13 +104,13 @@ def create_order(
     db.add(order)
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 @router.post("/product", response_model=OrderPublic, status_code=status.HTTP_201_CREATED)
 def create_product_order(
     payload: ProductOrderCreate,
-    current_user: User = Depends(require_roles(UserRole.customer)),
+    current_user: User = Depends(require_roles_with_complete_profile(UserRole.customer)),
     db: Session = Depends(get_db),
 ) -> Order:
     product = db.get(Project, payload.product_id)
@@ -93,6 +120,12 @@ def create_product_order(
             detail="Product not found",
         )
     if product.is_hidden:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product is not available for sale",
+        )
+    product_status = (product.status or "available").lower()
+    if product_status != "available":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product is not available for sale",
@@ -121,9 +154,10 @@ def create_product_order(
         fulfillment_type=payload.fulfillment_type,
         status=OrderStatus.accepted,
         accepted_at=datetime.now(timezone.utc),
-        price=0,
+        price=product.price or 0,
     )
     product.quantity -= payload.quantity
+    product.status = "sold" if product.quantity <= 0 else "ordered"
     db.add(order)
     db.flush()
     create_notification(
@@ -137,13 +171,13 @@ def create_product_order(
     )
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 @router.post("/material", response_model=OrderPublic, status_code=status.HTTP_201_CREATED)
 def create_material_order(
     payload: MaterialOrderCreate,
-    current_user: User = Depends(require_roles(UserRole.artisan)),
+    current_user: User = Depends(require_roles_with_complete_profile(UserRole.artisan)),
     db: Session = Depends(get_db),
 ) -> Order:
     batch = db.get(Batch, payload.batch_id)
@@ -208,7 +242,7 @@ def create_material_order(
     )
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 VALID_STATUS_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
@@ -311,6 +345,7 @@ def update_order_status(
         order.rejected_at = datetime.now(timezone.utc)
     elif payload.status == OrderStatus.completed:
         order.completed_at = datetime.now(timezone.utc)
+        _mark_order_product_sold(db, order)
 
     participant_ids = {
         user_id
@@ -330,7 +365,7 @@ def update_order_status(
 
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 @router.post("/{order_id}/generate-handover-otp", response_model=HandoverOtpPublic)
@@ -397,7 +432,7 @@ def verify_handover_otp(
     order.fulfillment_status = FULFILLMENT_HANDOVER_VERIFIED
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 @router.post("/{order_id}/confirm-received", response_model=OrderPublic)
@@ -419,9 +454,10 @@ def confirm_order_received(
     order.fulfillment_status = FULFILLMENT_RECEIVED
     order.status = OrderStatus.completed
     order.completed_at = now
+    _mark_order_product_sold(db, order)
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)
 
 
 @router.post("/{order_id}/report-dispute", response_model=OrderPublic)
@@ -441,4 +477,4 @@ def report_order_dispute(
     order.fulfillment_status = FULFILLMENT_DISPUTED
     db.commit()
     db.refresh(order)
-    return order
+    return _load_order_details(db, order)

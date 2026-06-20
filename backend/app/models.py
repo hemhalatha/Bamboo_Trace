@@ -79,6 +79,13 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    address_line: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    district: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pincode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     batches: Mapped[list["Batch"]] = relationship(
@@ -106,6 +113,7 @@ class Batch(Base):
     quantity_unit: Mapped[str] = mapped_column(String(40), default="kg")
     price: Mapped[float | None] = mapped_column(Float, nullable=True)
     location: Mapped[str] = mapped_column(String(255))
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     available_now: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[BatchStatus] = mapped_column(
         Enum(BatchStatus), default=BatchStatus.available, index=True
@@ -128,13 +136,20 @@ class Project(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
-    source_batch_id: Mapped[str] = mapped_column(String(80))
+    source_batch_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     product_type: Mapped[str] = mapped_column(String(80))
     product_name: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bamboo_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    material_source: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    source_details: Mapped[str | None] = mapped_column(String(500), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer)
     is_hidden: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(String(40), default="available", index=True)
     estimated_days: Mapped[int] = mapped_column(Integer)
     progress: Mapped[float] = mapped_column(Float, default=0)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     owner: Mapped[User] = relationship(back_populates="projects")
@@ -240,6 +255,7 @@ class CustomOrderRequest(Base):
     quantity: Mapped[int] = mapped_column(Integer)
     budget: Mapped[float | None] = mapped_column(Float, nullable=True)
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     rejected_artisan_ids: Mapped[str] = mapped_column(String(2000), default="")
     status: Mapped[CustomRequestStatus] = mapped_column(
         Enum(CustomRequestStatus), default=CustomRequestStatus.open, index=True

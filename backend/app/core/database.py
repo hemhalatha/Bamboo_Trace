@@ -20,6 +20,32 @@ def get_db():
         db.close()
 
 
+def ensure_user_columns() -> None:
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("users")
+    }
+    required_columns = {
+        "phone": "VARCHAR(30)",
+        "address_line": "VARCHAR(255)",
+        "city": "VARCHAR(120)",
+        "district": "VARCHAR(120)",
+        "state": "VARCHAR(120)",
+        "pincode": "VARCHAR(20)",
+        "landmark": "VARCHAR(255)",
+    }
+
+    with engine.begin() as connection:
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                connection.execute(
+                    text(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
+                )
+
+
 def ensure_order_columns() -> None:
     inspector = inspect(engine)
     if "orders" not in inspector.get_table_names():
@@ -112,14 +138,53 @@ def ensure_project_columns() -> None:
     existing_columns = {
         column["name"] for column in inspector.get_columns("projects")
     }
+    required_columns = {
+        "description": "VARCHAR(1000)",
+        "price": "FLOAT",
+        "bamboo_type": "VARCHAR(80)",
+        "material_source": "VARCHAR(80)",
+        "source_details": "VARCHAR(500)",
+    }
     with engine.begin() as connection:
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                connection.execute(
+                    text(f"ALTER TABLE projects ADD COLUMN {column_name} {column_type}")
+                )
         if "is_hidden" not in existing_columns:
             connection.execute(
                 text("ALTER TABLE projects ADD COLUMN is_hidden BOOLEAN")
             )
+        if "image_url" not in existing_columns:
+            connection.execute(
+                text("ALTER TABLE projects ADD COLUMN image_url VARCHAR(500)")
+            )
+        if "status" not in existing_columns:
+            connection.execute(
+                text("ALTER TABLE projects ADD COLUMN status VARCHAR(40)")
+            )
         connection.execute(
             text("UPDATE projects SET is_hidden = :is_hidden WHERE is_hidden IS NULL"),
             {"is_hidden": False},
+        )
+        connection.execute(
+            text(
+                "UPDATE projects SET status = 'draft' "
+                "WHERE (status IS NULL OR status = '') AND is_hidden = :is_hidden"
+            ),
+            {"is_hidden": True},
+        )
+        connection.execute(
+            text(
+                "UPDATE projects SET status = 'sold' "
+                "WHERE (status IS NULL OR status = '') AND quantity <= 0"
+            )
+        )
+        connection.execute(
+            text(
+                "UPDATE projects SET status = 'available' "
+                "WHERE status IS NULL OR status = ''"
+            )
         )
 
 
@@ -135,6 +200,7 @@ def ensure_batch_columns() -> None:
         "quantity_available": "INTEGER",
         "quantity_unit": "VARCHAR(40)",
         "price": "FLOAT",
+        "image_url": "VARCHAR(500)",
         "available_now": "BOOLEAN",
         "status": "VARCHAR(80)",
         "available_from_date": "TIMESTAMP",
@@ -201,6 +267,7 @@ def ensure_custom_order_request_columns() -> None:
     required_columns = {
         "accepted_by_artisan_id": "VARCHAR(36)",
         "rejected_artisan_ids": "VARCHAR(2000)",
+        "image_url": "VARCHAR(500)",
     }
 
     with engine.begin() as connection:

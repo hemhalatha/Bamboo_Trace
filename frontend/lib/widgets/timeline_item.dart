@@ -32,8 +32,10 @@ class TimelineItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               SizedBox(height: 4),
               Text(subtitle, style: TextStyle(color: Colors.grey[700])),
               SizedBox(height: 4),

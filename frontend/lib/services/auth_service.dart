@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/auth_user.dart';
+import '../utils/error_messages.dart';
 import 'api_service.dart';
 import 'token_storage.dart';
 
 class AuthService with ChangeNotifier {
   AuthService({ApiService? apiService})
-      : _apiService = apiService ?? ApiService();
+    : _apiService = apiService ?? ApiService();
 
   final ApiService _apiService;
   AuthUser? _currentUser;
@@ -18,6 +19,8 @@ class AuthService with ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get needsProfileCompletion =>
+      _currentUser != null && !_currentUser!.profileComplete;
 
   Future<void> initialize() async {
     final token = await TokenStorage.readAccessToken();
@@ -27,7 +30,7 @@ class AuthService with ChangeNotifier {
     try {
       _currentUser = await _apiService.getCurrentUser();
     } catch (e) {
-      debugPrint('Stored session is invalid: $e');
+      if (kDebugMode) debugPrint('Stored session is invalid: $e');
       await TokenStorage.clearAccessToken();
       _currentUser = null;
     } finally {
@@ -45,19 +48,21 @@ class AuthService with ChangeNotifier {
     String role,
     String name,
   ) async {
-    return _authenticate(() => _apiService.signup(
-          email: email,
-          password: password,
-          role: role,
-          name: name,
-        ));
+    return _authenticate(
+      () => _apiService.signup(
+        email: email,
+        password: password,
+        role: role,
+        name: name,
+      ),
+    );
   }
 
   Future<void> signOut() async {
     try {
       await _apiService.logout();
     } catch (e) {
-      debugPrint('Logout request failed: $e');
+      if (kDebugMode) debugPrint('Logout request failed: $e');
     } finally {
       await TokenStorage.clearAccessToken();
       _currentUser = null;
@@ -65,9 +70,23 @@ class AuthService with ChangeNotifier {
     }
   }
 
-  Future<bool> _authenticate(
-    Future<AuthResult> Function() request,
-  ) async {
+  Future<bool> updateProfile(Map<String, dynamic> profileData) async {
+    _setLoading(true);
+    _errorMessage = null;
+    try {
+      _currentUser = await _apiService.updateProfile(profileData);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = friendlyErrorMessage(e);
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> _authenticate(Future<AuthResult> Function() request) async {
     _setLoading(true);
     _errorMessage = null;
     try {
@@ -77,7 +96,7 @@ class AuthService with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = friendlyErrorMessage(e);
       notifyListeners();
       return false;
     } finally {
@@ -90,5 +109,4 @@ class AuthService with ChangeNotifier {
     _isLoading = value;
     notifyListeners();
   }
-
 }

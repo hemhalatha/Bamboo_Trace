@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/app_notification.dart';
 import '../../services/api_service.dart';
-import 'custom_requests_tab.dart';
-import 'order_requests_tab.dart';
-import 'role_orders_tab.dart';
+import '../../utils/error_messages.dart';
+import 'notification_target_page.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -24,43 +23,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _markRead(AppNotification notification) async {
-    await _apiService.markNotificationRead(notification.id);
-    if (!mounted) return;
-    setState(() => _notificationsFuture = _apiService.getNotifications());
-    final targetPage = _targetPage(notification);
-    if (targetPage == null) {
+    try {
+      await _apiService.markNotificationRead(notification.id);
+      if (!mounted) return;
+      setState(() => _notificationsFuture = _apiService.getNotifications());
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NotificationTargetPage(notification: notification),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Opened ${notification.navigationTarget}')),
-      );
-      return;
-    }
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => targetPage),
-    );
-  }
-
-  Widget? _targetPage(AppNotification notification) {
-    final entityType = notification.entityType;
-    if (entityType == 'order') {
-      return Scaffold(
-        appBar: AppBar(title: Text('Orders')),
-        body: RoleOrdersTab(title: 'Orders'),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     }
-    if (entityType == 'custom_order_request') {
-      return Scaffold(
-        appBar: AppBar(title: Text('Custom Requests')),
-        body: CustomRequestsTab(title: 'Custom Requests'),
-      );
-    }
-    if (entityType == 'order_request') {
-      return Scaffold(
-        appBar: AppBar(title: Text('Requests')),
-        body: OrderRequestsTab(title: 'Requests'),
-      );
-    }
-    return null;
   }
 
   @override
@@ -74,7 +52,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             return Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text(snapshot.error.toString()));
+            return Center(child: Text(friendlyErrorMessage(snapshot.error)));
           }
           final notifications = snapshot.data ?? [];
           if (notifications.isEmpty) {

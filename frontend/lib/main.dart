@@ -19,10 +19,7 @@ class BambooTraceApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'BambooTrace',
-        theme: ThemeData(
-          primarySwatch: Colors.green,
-          useMaterial3: true,
-        ),
+        theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
         home: SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),

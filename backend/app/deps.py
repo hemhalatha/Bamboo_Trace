@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models import User, UserRole
+from app.profile_completion import (
+    is_profile_complete,
+    missing_profile_fields,
+    profile_completion_message,
+)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -49,6 +54,37 @@ def require_roles(*roles: UserRole):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient role",
+            )
+        return current_user
+
+    return dependency
+
+
+def require_complete_profile(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not is_profile_complete(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+            detail={
+                "message": profile_completion_message(current_user.role),
+                "profileRequired": True,
+                "missingFields": missing_profile_fields(current_user),
+            },
+        )
+    return current_user
+
+
+def require_roles_with_complete_profile(*roles: UserRole):
+    def dependency(current_user: User = Depends(require_roles(*roles))) -> User:
+        if not is_profile_complete(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+                detail={
+                    "message": profile_completion_message(current_user.role),
+                    "profileRequired": True,
+                    "missingFields": missing_profile_fields(current_user),
+                },
             )
         return current_user
 

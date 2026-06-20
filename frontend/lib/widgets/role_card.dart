@@ -39,10 +39,18 @@ class RoleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     SizedBox(height: 6),
-                    Text(description, style: TextStyle(color: Colors.grey[700])),
+                    Text(
+                      description,
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
                   ],
                 ),
               ),

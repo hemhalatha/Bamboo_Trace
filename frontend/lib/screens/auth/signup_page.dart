@@ -37,6 +37,13 @@ class _SignupPageState extends State<SignupPage> {
     setState(() => _isSigningUp = false);
 
     if (success && authService.userRole != null) {
+      if (authService.needsProfileCompletion) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Complete your profile before buying or selling.'),
+          ),
+        );
+      }
       _navigateToRoleDashboard(authService.userRole!);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +67,10 @@ class _SignupPageState extends State<SignupPage> {
       default:
         dashboard = LoginPage();
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => dashboard));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => dashboard),
+    );
   }
 
   @override
@@ -87,7 +97,11 @@ class _SignupPageState extends State<SignupPage> {
                 SizedBox(height: 20),
                 Text(
                   'Create your account',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 40),
@@ -96,7 +110,9 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Name',
                     prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -116,11 +132,15 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your email';
-                    if (!value.contains('@')) return 'Please enter a valid email';
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your email';
+                    if (!value.contains('@'))
+                      return 'Please enter a valid email';
                     return null;
                   },
                 ),
@@ -132,14 +152,24 @@ class _SignupPageState extends State<SignupPage> {
                     labelText: 'Password',
                     prefixIcon: Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(_isPasswordHidden ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _isPasswordHidden = !_isPasswordHidden),
+                      icon: Icon(
+                        _isPasswordHidden
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(
+                        () => _isPasswordHidden = !_isPasswordHidden,
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your password';
-                    if (value.length < 8) return 'Password must be at least 8 characters';
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your password';
+                    if (value.length < 8)
+                      return 'Password must be at least 8 characters';
                     return null;
                   },
                 ),
@@ -149,10 +179,15 @@ class _SignupPageState extends State<SignupPage> {
                   decoration: InputDecoration(
                     labelText: 'Role',
                     prefixIcon: Icon(Icons.badge),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   items: [
-                    DropdownMenuItem(value: 'customer', child: Text('Customer')),
+                    DropdownMenuItem(
+                      value: 'customer',
+                      child: Text('Customer'),
+                    ),
                     DropdownMenuItem(value: 'farmer', child: Text('Farmer')),
                     DropdownMenuItem(value: 'artisan', child: Text('Artisan')),
                   ],
@@ -168,15 +203,23 @@ class _SignupPageState extends State<SignupPage> {
                     onPressed: _isSigningUp ? null : _signup,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _isSigningUp
                         ? SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
-                        : Text('Sign Up', style: TextStyle(fontSize: 18, color: Colors.white)),
+                        : Text(
+                            'Sign Up',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                   ),
                 ),
                 SizedBox(height: 16),

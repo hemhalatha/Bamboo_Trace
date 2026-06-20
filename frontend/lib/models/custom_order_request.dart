@@ -10,6 +10,7 @@ class CustomOrderRequest {
   final int quantity;
   final double? budget;
   final DateTime? deadline;
+  final String? imageUrl;
   final String status;
   final DateTime createdAt;
   final DateTime? respondedAt;
@@ -30,6 +31,7 @@ class CustomOrderRequest {
     required this.quantity,
     this.budget,
     this.deadline,
+    this.imageUrl,
     required this.status,
     required this.createdAt,
     this.respondedAt,
@@ -55,8 +57,10 @@ class CustomOrderRequest {
           ? rawBudget.toDouble()
           : double.tryParse(rawBudget?.toString() ?? ''),
       deadline: DateTime.tryParse(data['deadline']?.toString() ?? ''),
+      imageUrl: data['imageUrl']?.toString(),
       status: data['status']?.toString() ?? '',
-      createdAt: DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
+      createdAt:
+          DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
           DateTime.now(),
       respondedAt: DateTime.tryParse(data['respondedAt']?.toString() ?? ''),
       rejectedByCurrentUser: data['rejectedByCurrentUser'] == true,

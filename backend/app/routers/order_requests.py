@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, require_complete_profile
 from app.models import (
     Batch,
     Notification,
@@ -160,6 +160,7 @@ def create_order_request(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> OrderRequest:
+    require_complete_profile(current_user)
     receiver = db.get(User, payload.receiver_id)
     if receiver is None:
         raise HTTPException(
@@ -235,6 +236,24 @@ def list_request_history(
         )
     )
     return [_load_request_details(db, request) for request in requests]
+
+
+@router.get("/{request_id}", response_model=OrderRequestPublic)
+def get_order_request(
+    request_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> OrderRequest:
+    order_request = db.get(OrderRequest, request_id)
+    if order_request is None or (
+        order_request.sender_id != current_user.id
+        and order_request.receiver_id != current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+    return _load_request_details(db, order_request)
 
 
 def _get_pending_request_for_response(
@@ -323,6 +342,7 @@ def accept_order_request(
     db: Session = Depends(get_db),
 ) -> OrderRequest:
     order_request = _get_pending_request_for_response(db, request_id, current_user)
+    require_complete_profile(current_user)
     order_request.status = RequestStatus.accepted
     order_request.responded_at = now_utc()
 

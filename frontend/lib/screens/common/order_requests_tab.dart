@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/order_request.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../utils/error_messages.dart';
 
 class OrderRequestsTab extends StatefulWidget {
   const OrderRequestsTab({super.key, required this.title});
@@ -112,11 +113,13 @@ class _RequestList extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text(snapshot.error.toString()));
+          return Center(child: Text(friendlyErrorMessage(snapshot.error)));
         }
         final requests = snapshot.data ?? [];
         if (requests.isEmpty) {
-          return Center(child: Text(active ? 'No active requests' : 'No request history'));
+          return Center(
+            child: Text(active ? 'No active requests' : 'No request history'),
+          );
         }
         return ListView.builder(
           padding: EdgeInsets.all(16),
@@ -128,6 +131,9 @@ class _RequestList extends StatelessWidget {
             final senderName = request.sender?['name'] ?? 'Sender';
             final receiverName = request.receiver?['name'] ?? 'Receiver';
             final isReceiver = request.receiverId == currentUserId;
+            final partyLabel = isReceiver
+                ? 'From: $senderName'
+                : 'To: $receiverName';
             return Card(
               margin: EdgeInsets.only(bottom: 12),
               child: Padding(
@@ -135,42 +141,41 @@ class _RequestList extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(
-                          child: Text(
-                            productName ?? batchName ?? 'Material request',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                        Text(
+                          productName ?? batchName ?? 'Material request',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         _StatusChip(status: request.status),
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text('From $senderName to $receiverName'),
+                    Text(partyLabel),
                     SizedBox(height: 4),
-                    Text('Quantity: ${request.quantity} ${request.quantityUnit}'),
+                    Text(
+                      'Quantity: ${request.quantity} ${request.quantityUnit}',
+                    ),
                     if (request.notes != null && request.notes!.isNotEmpty) ...[
                       SizedBox(height: 8),
                       Text(request.notes!),
                     ],
                     if (active && isReceiver) ...[
                       SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => onRespond(request, false),
-                              child: Text('Reject'),
-                            ),
+                          OutlinedButton(
+                            onPressed: () => onRespond(request, false),
+                            child: Text('Reject'),
                           ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => onRespond(request, true),
-                              child: Text('Accept'),
-                            ),
+                          ElevatedButton(
+                            onPressed: () => onRespond(request, true),
+                            child: Text('Accept'),
                           ),
                         ],
                       ),

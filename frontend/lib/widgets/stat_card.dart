@@ -29,12 +29,16 @@ class StatCard extends StatelessWidget {
             Text(
               value,
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             SizedBox(height: 6),
             Text(
               title,
               style: TextStyle(color: Colors.grey[700]),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

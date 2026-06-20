@@ -32,6 +32,13 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isSigningIn = false);
 
     if (success && authService.userRole != null) {
+      if (authService.needsProfileCompletion) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Complete your profile before buying or selling.'),
+          ),
+        );
+      }
       _navigateToRoleDashboard(authService.userRole!);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -55,7 +62,10 @@ class _LoginPageState extends State<LoginPage> {
       default:
         dashboard = LoginPage();
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => dashboard));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => dashboard),
+    );
   }
 
   @override
@@ -71,15 +81,30 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Icon(Icons.eco, size: 80, color: Colors.green[700]),
                 SizedBox(height: 20),
-                Text('Welcome to BambooTrace', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green[700])),
+                Text(
+                  'Welcome to BambooTrace',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
                 SizedBox(height: 40),
 
                 TextFormField(
                   controller: _emailController,
-                  decoration: InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your email';
-                    if (!value.contains('@')) return 'Please enter a valid email';
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your email';
+                    if (!value.contains('@'))
+                      return 'Please enter a valid email';
                     return null;
                   },
                 ),
@@ -92,14 +117,24 @@ class _LoginPageState extends State<LoginPage> {
                     labelText: 'Password',
                     prefixIcon: Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(_isPasswordHidden ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _isPasswordHidden = !_isPasswordHidden),
+                      icon: Icon(
+                        _isPasswordHidden
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(
+                        () => _isPasswordHidden = !_isPasswordHidden,
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your password';
-                    if (value.length < 6) return 'Password must be at least 6 characters';
+                    if (value == null || value.isEmpty)
+                      return 'Please enter your password';
+                    if (value.length < 6)
+                      return 'Password must be at least 6 characters';
                     return null;
                   },
                 ),
@@ -110,14 +145,25 @@ class _LoginPageState extends State<LoginPage> {
                   height: 50,
                   child: ElevatedButton(
                     onPressed: _isSigningIn ? null : _login,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     child: _isSigningIn
                         ? SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
-                        : Text('Sign In', style: TextStyle(fontSize: 18, color: Colors.white)),
+                        : Text(
+                            'Sign In',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                   ),
                 ),
                 SizedBox(height: 16),

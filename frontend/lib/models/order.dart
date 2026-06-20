@@ -17,9 +17,17 @@ class Order {
   final String? notes;
   final double price;
   final DateTime createdAt;
+  final DateTime? acceptedAt;
+  final DateTime? rejectedAt;
+  final DateTime? completedAt;
   final DateTime? handoverOtpExpiresAt;
   final DateTime? handoverVerifiedAt;
   final DateTime? receiverConfirmedAt;
+  final Map<String, dynamic>? customer;
+  final Map<String, dynamic>? artisan;
+  final Map<String, dynamic>? farmer;
+  final Map<String, dynamic>? product;
+  final Map<String, dynamic>? batch;
 
   Order({
     this.id,
@@ -40,9 +48,17 @@ class Order {
     this.notes,
     required this.price,
     required this.createdAt,
+    this.acceptedAt,
+    this.rejectedAt,
+    this.completedAt,
     this.handoverOtpExpiresAt,
     this.handoverVerifiedAt,
     this.receiverConfirmedAt,
+    this.customer,
+    this.artisan,
+    this.farmer,
+    this.product,
+    this.batch,
   });
 
   factory Order.fromJson(Map<String, dynamic> data) {
@@ -71,14 +87,26 @@ class Order {
       price: rawPrice is num
           ? rawPrice.toDouble()
           : double.tryParse(rawPrice?.toString() ?? '') ?? 0,
-      createdAt: DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
+      createdAt:
+          DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
           DateTime.now(),
-      handoverOtpExpiresAt:
-          DateTime.tryParse(data['handoverOtpExpiresAt']?.toString() ?? ''),
-      handoverVerifiedAt:
-          DateTime.tryParse(data['handoverVerifiedAt']?.toString() ?? ''),
-      receiverConfirmedAt:
-          DateTime.tryParse(data['receiverConfirmedAt']?.toString() ?? ''),
+      acceptedAt: DateTime.tryParse(data['acceptedAt']?.toString() ?? ''),
+      rejectedAt: DateTime.tryParse(data['rejectedAt']?.toString() ?? ''),
+      completedAt: DateTime.tryParse(data['completedAt']?.toString() ?? ''),
+      handoverOtpExpiresAt: DateTime.tryParse(
+        data['handoverOtpExpiresAt']?.toString() ?? '',
+      ),
+      handoverVerifiedAt: DateTime.tryParse(
+        data['handoverVerifiedAt']?.toString() ?? '',
+      ),
+      receiverConfirmedAt: DateTime.tryParse(
+        data['receiverConfirmedAt']?.toString() ?? '',
+      ),
+      customer: data['customer'] as Map<String, dynamic>?,
+      artisan: data['artisan'] as Map<String, dynamic>?,
+      farmer: data['farmer'] as Map<String, dynamic>?,
+      product: data['product'] as Map<String, dynamic>?,
+      batch: data['batch'] as Map<String, dynamic>?,
     );
   }
 

@@ -29,9 +29,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         title: Text('BambooTrace Shop'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
-        actions: [
-          NotificationIconButton(),
-        ],
+        actions: [NotificationIconButton()],
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -40,9 +38,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Shop'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Requests'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: 'Orders'),
-          BottomNavigationBarItem(icon: Icon(Icons.timeline), label: 'Timeline'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment),
+            label: 'Requests',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag),
+            label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.timeline),
+            label: 'Timeline',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),

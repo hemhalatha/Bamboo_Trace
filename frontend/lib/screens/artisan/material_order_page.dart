@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../config/bamboo_types.dart';
 import '../../services/api_service.dart';
+import '../../utils/error_messages.dart';
+import '../../utils/profile_completion_guard.dart';
+import '../../widgets/remote_image.dart';
 
 class MaterialOrderPage extends StatefulWidget {
   const MaterialOrderPage({super.key, required this.batch});
@@ -23,11 +27,16 @@ class _MaterialOrderPageState extends State<MaterialOrderPage> {
   }
 
   Future<void> _placeOrder() async {
+    final profileComplete = await ensureProfileComplete(
+      context,
+      message: 'Please complete your profile before buying material.',
+    );
+    if (!profileComplete) return;
     final quantity = int.tryParse(_quantityController.text.trim());
     if (quantity == null || quantity <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Enter a valid quantity')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Enter a valid quantity')));
       return;
     }
     setState(() => _isSubmitting = true);
@@ -39,14 +48,15 @@ class _MaterialOrderPageState extends State<MaterialOrderPage> {
         fulfillmentType: _fulfillmentType,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Material order placed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Material order placed')));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
+      if (await handleProfileRequired(context, e)) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(content: Text(friendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -56,69 +66,94 @@ class _MaterialOrderPageState extends State<MaterialOrderPage> {
   @override
   Widget build(BuildContext context) {
     final farmerName = widget.batch['farmerName'] ?? 'Unknown farmer';
-    final farmerLocation = widget.batch['farmerLocation'] ?? widget.batch['location'] ?? 'Not specified';
+    final farmerLocation =
+        widget.batch['farmerLocation'] ??
+        widget.batch['location'] ??
+        'Not specified';
     final availableFrom = widget.batch['availableFromDate'];
     final harvestDate = widget.batch['expectedHarvestDate'];
-    final quantity = widget.batch['quantityAvailable'] ?? widget.batch['quantity'] ?? 0;
+    final quantity =
+        widget.batch['quantityAvailable'] ?? widget.batch['quantity'] ?? 0;
     final unit = widget.batch['quantityUnit'] ?? 'kg';
     final isUpcoming = widget.batch['status'] == 'upcoming';
 
     return Scaffold(
-      appBar: AppBar(title: Text(isUpcoming ? 'Pre-order Material' : 'Buy Material')),
-      body: Padding(
+      appBar: AppBar(
+        title: Text(isUpcoming ? 'Pre-order Material' : 'Buy Material'),
+      ),
+      body: ListView(
         padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.inventory_2, color: Colors.green[700]),
-                title: Text(widget.batch['type'] ?? 'Bamboo material'),
-                subtitle: Text(
-                  'Farmer: $farmerName\nLocation: $farmerLocation\nAvailable: $quantity $unit',
-                ),
-                isThreeLine: true,
+        children: [
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RemoteImage(
+                    imageUrl: widget.batch['imageUrl']?.toString(),
+                    height: 84,
+                    width: 84,
+                    icon: Icons.inventory_2,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayBambooType(widget.batch['type']),
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 4),
+                        Text('Farmer: $farmerName'),
+                        Text('Location: $farmerLocation'),
+                        Text('Available: $quantity $unit'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (availableFrom != null) Text('Available from: $availableFrom'),
-            if (harvestDate != null) Text('Expected harvest: $harvestDate'),
-            SizedBox(height: 20),
-            TextField(
-              controller: _quantityController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Quantity ($unit)',
-                border: OutlineInputBorder(),
-              ),
+          ),
+          if (availableFrom != null) Text('Available from: $availableFrom'),
+          if (harvestDate != null) Text('Expected harvest: $harvestDate'),
+          SizedBox(height: 20),
+          TextField(
+            controller: _quantityController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Quantity ($unit)',
+              border: OutlineInputBorder(),
             ),
-            SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              value: _fulfillmentType,
-              decoration: InputDecoration(
-                labelText: 'Fulfillment',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
-                DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
-              ],
-              onChanged: (value) {
-                if (value != null) setState(() => _fulfillmentType = value);
-              },
+          ),
+          SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            value: _fulfillmentType,
+            decoration: InputDecoration(
+              labelText: 'Fulfillment',
+              border: OutlineInputBorder(),
             ),
-            SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _placeOrder,
-                child: _isSubmitting
-                    ? CircularProgressIndicator(color: Colors.white)
-                    : Text(isUpcoming ? 'Pre-order' : 'Buy'),
-              ),
+            items: const [
+              DropdownMenuItem(value: 'delivery', child: Text('Delivery')),
+              DropdownMenuItem(value: 'pickup', child: Text('Pickup')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _fulfillmentType = value);
+            },
+          ),
+          SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _placeOrder,
+              child: _isSubmitting
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text(isUpcoming ? 'Pre-order' : 'Buy'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
@@ -10,16 +11,72 @@ import '../models/order_request.dart';
 import 'token_storage.dart';
 
 class AuthResult {
-  AuthResult({required this.accessToken, required this.user});
+  AuthResult({
+    required this.accessToken,
+    required this.user,
+    required this.profileComplete,
+  });
 
   final String accessToken;
   final AuthUser user;
+  final bool profileComplete;
+}
+
+class ProfileRequiredException implements Exception {
+  ProfileRequiredException(this.message, {this.missingFields = const []});
+
+  final String message;
+  final List<String> missingFields;
+
+  @override
+  String toString() => message;
+}
+
+class ApiConfigurationException implements Exception {
+  ApiConfigurationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class ApiException implements Exception {
+  ApiException(this.message, {required this.statusCode});
+
+  final String message;
+  final int statusCode;
+
+  @override
+  String toString() => message;
 }
 
 class ApiService {
+  ApiService({String? baseUrl}) : baseUrl = baseUrl ?? AppConfig.apiBaseUrl;
+
   final String baseUrl;
 
-  ApiService({this.baseUrl = AppConfig.apiBaseUrl});
+  Uri _uri(String path) {
+    try {
+      AppConfig.validateApiBaseUrl(baseUrl);
+    } catch (error) {
+      throw ApiConfigurationException(error.toString().replaceFirst('Bad state: ', ''));
+    }
+    final normalizedBaseUrl = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$normalizedBaseUrl$normalizedPath');
+  }
+
+  String? resolveImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    final path = imageUrl.startsWith('/') ? imageUrl : '/$imageUrl';
+    return '$baseUrl$path';
+  }
 
   Future<String?> _getIdToken() async {
     return TokenStorage.readAccessToken();
@@ -43,7 +100,7 @@ class ApiService {
     required String name,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/signup'),
+      _uri('/auth/signup'),
       headers: await _getHeaders(authenticated: false),
       body: jsonEncode({
         'email': email,
@@ -57,7 +114,7 @@ class ApiService {
 
   Future<AuthResult> login(String email, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
+      _uri('/auth/login'),
       headers: await _getHeaders(authenticated: false),
       body: jsonEncode({'email': email, 'password': password}),
     );
@@ -68,68 +125,156 @@ class ApiService {
     final token = await _getIdToken();
     if (token == null) return;
     await http.post(
-      Uri.parse('$baseUrl/auth/logout'),
+      _uri('/auth/logout'),
       headers: await _getHeaders(),
     );
   }
 
   Future<AuthUser> getCurrentUser() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/auth/me'),
+      _uri('/auth/me'),
       headers: await _getHeaders(),
     );
     final data = _decodeObject(response);
     return AuthUser.fromJson(data);
   }
 
+  Future<AuthUser> updateProfile(Map<String, dynamic> profileData) async {
+    final response = await http.patch(
+      _uri('/users/me/profile'),
+      headers: await _getHeaders(),
+      body: jsonEncode(profileData),
+    );
+    return AuthUser.fromJson(_decodeObject(response));
+  }
+
   Future<List<Map<String, dynamic>>> getBatches() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/batches'), headers: headers);
+    final response = await http.get(
+      _uri('/batches'),
+      headers: headers,
+    );
     return _decodeList(response);
   }
 
   Future<Map<String, dynamic>> addBatch(Map<String, dynamic> batchData) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/batches'),
+      _uri('/batches'),
       headers: headers,
       body: jsonEncode(batchData),
     );
     return _decodeObject(response);
   }
 
+  Future<String> uploadImage(XFile image) async {
+    final headers = await _getHeaders();
+    final request = http.MultipartRequest(
+      'POST',
+      _uri('/uploads/images'),
+    );
+    final authorization = headers['Authorization'];
+    if (authorization != null) {
+      request.headers['Authorization'] = authorization;
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        await image.readAsBytes(),
+        filename: image.name,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final data = _decodeObject(response);
+    return data['imageUrl']?.toString() ?? data['image_url']?.toString() ?? '';
+  }
+
   Future<List<Map<String, dynamic>>> getProjects() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/projects'), headers: headers);
+    final response = await http.get(
+      _uri('/projects'),
+      headers: headers,
+    );
     return _decodeList(response);
   }
 
+  Future<List<Map<String, dynamic>>> getMyArtisanProducts() => getProjects();
+
   Future<List<Map<String, dynamic>>> getProjectCatalog() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/projects/catalog'), headers: headers);
+    final response = await http.get(
+      _uri('/projects/catalog'),
+      headers: headers,
+    );
     return _decodeList(response);
   }
 
   Future<List<Map<String, dynamic>>> getArtisans() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/users/artisans'), headers: headers);
+    final response = await http.get(
+      _uri('/users/artisans'),
+      headers: headers,
+    );
     return _decodeList(response);
   }
 
-  Future<Map<String, dynamic>> addProject(Map<String, dynamic> projectData) async {
+  Future<Map<String, dynamic>> addProject(
+    Map<String, dynamic> projectData,
+  ) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/projects'),
+      _uri('/projects'),
       headers: headers,
       body: jsonEncode(projectData),
     );
     return _decodeObject(response);
   }
 
+  Future<Map<String, dynamic>> createArtisanProduct(
+    Map<String, dynamic> productData,
+  ) => addProject(productData);
+
+  Future<Map<String, dynamic>> updateProject(
+    String projectId,
+    Map<String, dynamic> projectData,
+  ) async {
+    final headers = await _getHeaders();
+    final response = await http.patch(
+      _uri('/projects/$projectId'),
+      headers: headers,
+      body: jsonEncode(projectData),
+    );
+    return _decodeObject(response);
+  }
+
+  Future<Map<String, dynamic>> updateArtisanProduct(
+    String productId,
+    Map<String, dynamic> productData,
+  ) => updateProject(productId, productData);
+
+  Future<Map<String, dynamic>> updateArtisanProductStatus(
+    String productId,
+    String status,
+  ) => updateProject(productId, {'status': status});
+
   Future<List<Map<String, dynamic>>> getOrders() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/orders'), headers: headers);
+    final response = await http.get(
+      _uri('/orders'),
+      headers: headers,
+    );
     return _decodeList(response);
+  }
+
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      _uri('/dashboard/stats'),
+      headers: headers,
+    );
+    return _decodeObject(response);
   }
 
   Future<List<Order>> getOrderModels() async {
@@ -137,10 +282,19 @@ class ApiService {
     return orders.map(Order.fromJson).toList();
   }
 
+  Future<Order> getOrderById(String orderId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      _uri('/orders/$orderId'),
+      headers: headers,
+    );
+    return Order.fromJson(_decodeObject(response));
+  }
+
   Future<Map<String, dynamic>> addOrder(Map<String, dynamic> orderData) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders'),
+      _uri('/orders'),
       headers: headers,
       body: jsonEncode(orderData),
     );
@@ -155,7 +309,7 @@ class ApiService {
   }) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/product'),
+      _uri('/orders/product'),
       headers: headers,
       body: jsonEncode({
         'productId': productId,
@@ -175,7 +329,7 @@ class ApiService {
   }) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/material'),
+      _uri('/orders/material'),
       headers: headers,
       body: jsonEncode({
         'batchId': batchId,
@@ -190,7 +344,7 @@ class ApiService {
   Future<Order> updateOrderStatus(String orderId, String status) async {
     final headers = await _getHeaders();
     final response = await http.patch(
-      Uri.parse('$baseUrl/orders/$orderId/status'),
+      _uri('/orders/$orderId/status'),
       headers: headers,
       body: jsonEncode({'status': status}),
     );
@@ -200,7 +354,7 @@ class ApiService {
   Future<Map<String, dynamic>> generateHandoverOtp(String orderId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/$orderId/generate-handover-otp'),
+      _uri('/orders/$orderId/generate-handover-otp'),
       headers: headers,
     );
     return _decodeObject(response);
@@ -209,7 +363,7 @@ class ApiService {
   Future<Order> verifyHandoverOtp(String orderId, String otp) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/$orderId/verify-handover-otp'),
+      _uri('/orders/$orderId/verify-handover-otp'),
       headers: headers,
       body: jsonEncode({'otp': otp}),
     );
@@ -219,7 +373,7 @@ class ApiService {
   Future<Order> confirmOrderReceived(String orderId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/$orderId/confirm-received'),
+      _uri('/orders/$orderId/confirm-received'),
       headers: headers,
     );
     return Order.fromJson(_decodeObject(response));
@@ -228,7 +382,7 @@ class ApiService {
   Future<Order> reportOrderDispute(String orderId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/orders/$orderId/report-dispute'),
+      _uri('/orders/$orderId/report-dispute'),
       headers: headers,
     );
     return Order.fromJson(_decodeObject(response));
@@ -236,8 +390,20 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getBatchCatalog() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/batches/catalog'), headers: headers);
+    final response = await http.get(
+      _uri('/batches/catalog'),
+      headers: headers,
+    );
     return _decodeList(response);
+  }
+
+  Future<Map<String, dynamic>> getBatchById(String batchId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      _uri('/batches/$batchId'),
+      headers: headers,
+    );
+    return _decodeObject(response);
   }
 
   Future<OrderRequest> createOrderRequest({
@@ -252,7 +418,7 @@ class ApiService {
   }) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/order-requests'),
+      _uri('/order-requests'),
       headers: headers,
       body: jsonEncode({
         'requestType': requestType,
@@ -270,20 +436,35 @@ class ApiService {
 
   Future<List<OrderRequest>> getActiveRequests() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/order-requests/active'), headers: headers);
+    final response = await http.get(
+      _uri('/order-requests/active'),
+      headers: headers,
+    );
     return _decodeList(response).map(OrderRequest.fromJson).toList();
   }
 
   Future<List<OrderRequest>> getRequestHistory() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/order-requests/history'), headers: headers);
+    final response = await http.get(
+      _uri('/order-requests/history'),
+      headers: headers,
+    );
     return _decodeList(response).map(OrderRequest.fromJson).toList();
+  }
+
+  Future<OrderRequest> getOrderRequestById(String requestId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      _uri('/order-requests/$requestId'),
+      headers: headers,
+    );
+    return OrderRequest.fromJson(_decodeObject(response));
   }
 
   Future<OrderRequest> acceptOrderRequest(String requestId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/order-requests/$requestId/accept'),
+      _uri('/order-requests/$requestId/accept'),
       headers: headers,
     );
     return OrderRequest.fromJson(_decodeObject(response));
@@ -292,7 +473,7 @@ class ApiService {
   Future<OrderRequest> rejectOrderRequest(String requestId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/order-requests/$requestId/reject'),
+      _uri('/order-requests/$requestId/reject'),
       headers: headers,
     );
     return OrderRequest.fromJson(_decodeObject(response));
@@ -300,20 +481,26 @@ class ApiService {
 
   Future<List<AppNotification>> getNotifications() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/notifications'), headers: headers);
+    final response = await http.get(
+      _uri('/notifications'),
+      headers: headers,
+    );
     return _decodeList(response).map(AppNotification.fromJson).toList();
   }
 
   Future<int> getUnreadNotificationCount() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/notifications/unread-count'), headers: headers);
+    final response = await http.get(
+      _uri('/notifications/unread-count'),
+      headers: headers,
+    );
     return (_decodeObject(response)['count'] ?? 0) as int;
   }
 
   Future<AppNotification> markNotificationRead(String notificationId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/notifications/$notificationId/read'),
+      _uri('/notifications/$notificationId/read'),
       headers: headers,
     );
     return AppNotification.fromJson(_decodeObject(response));
@@ -327,10 +514,11 @@ class ApiService {
     required int quantity,
     double? budget,
     String? deadline,
+    String? imageUrl,
   }) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/custom-order-requests'),
+      _uri('/custom-order-requests'),
       headers: headers,
       body: jsonEncode({
         'targetType': targetType,
@@ -340,6 +528,7 @@ class ApiService {
         'quantity': quantity,
         if (budget != null) 'budget': budget,
         if (deadline != null && deadline.isNotEmpty) 'deadline': deadline,
+        if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       }),
     );
     return CustomOrderRequest.fromJson(_decodeObject(response));
@@ -347,20 +536,35 @@ class ApiService {
 
   Future<List<CustomOrderRequest>> getActiveCustomOrderRequests() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/custom-order-requests/active'), headers: headers);
+    final response = await http.get(
+      _uri('/custom-order-requests/active'),
+      headers: headers,
+    );
     return _decodeList(response).map(CustomOrderRequest.fromJson).toList();
   }
 
   Future<List<CustomOrderRequest>> getCustomOrderRequestHistory() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/custom-order-requests/history'), headers: headers);
+    final response = await http.get(
+      _uri('/custom-order-requests/history'),
+      headers: headers,
+    );
     return _decodeList(response).map(CustomOrderRequest.fromJson).toList();
+  }
+
+  Future<CustomOrderRequest> getCustomOrderRequestById(String requestId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      _uri('/custom-order-requests/$requestId'),
+      headers: headers,
+    );
+    return CustomOrderRequest.fromJson(_decodeObject(response));
   }
 
   Future<CustomOrderRequest> acceptCustomOrderRequest(String requestId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/custom-order-requests/$requestId/accept'),
+      _uri('/custom-order-requests/$requestId/accept'),
       headers: headers,
     );
     return CustomOrderRequest.fromJson(_decodeObject(response));
@@ -369,7 +573,7 @@ class ApiService {
   Future<CustomOrderRequest> rejectCustomOrderRequest(String requestId) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/custom-order-requests/$requestId/reject'),
+      _uri('/custom-order-requests/$requestId/reject'),
       headers: headers,
     );
     return CustomOrderRequest.fromJson(_decodeObject(response));
@@ -380,6 +584,7 @@ class ApiService {
     return AuthResult(
       accessToken: data['access_token'] as String,
       user: AuthUser.fromJson(data['user'] as Map<String, dynamic>),
+      profileComplete: data['profileComplete'] == true,
     );
   }
 
@@ -398,29 +603,79 @@ class ApiService {
   }
 
   Object? _decodeResponse(http.Response response) {
-    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    Object? decoded;
+    if (response.body.isNotEmpty) {
+      try {
+        decoded = jsonDecode(response.body);
+      } on FormatException {
+        throw ApiException(
+          'The server returned an invalid response. Please try again later.',
+          statusCode: response.statusCode,
+        );
+      }
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
     }
 
-    if (decoded is Map<String, dynamic> && decoded['detail'] != null) {
-      final detail = decoded['detail'];
+    if (decoded is Map<String, dynamic>) {
+      final errors = decoded['errors'];
+      if (errors is List && errors.isNotEmpty) {
+        final first = errors.first;
+        if (first is Map<String, dynamic>) {
+          final field = first['field']?.toString().split('.').last;
+          final message = first['message']?.toString();
+          if (message != null && message.isNotEmpty) {
+            final label = field == null || field.isEmpty
+                ? ''
+                : '${field[0].toUpperCase()}${field.substring(1)}: ';
+            throw ApiException(
+              '$label$message',
+              statusCode: response.statusCode,
+            );
+          }
+        }
+      }
 
-      if (detail is String) {
-        throw Exception(detail);
+      final detail = decoded['detail'];
+      if (detail is String && detail.isNotEmpty) {
+        throw ApiException(detail, statusCode: response.statusCode);
+      }
+
+      if (detail is Map<String, dynamic>) {
+        final message = detail['message'];
+        if (detail['profileRequired'] == true) {
+          final missingFields = detail['missingFields'];
+          throw ProfileRequiredException(
+            message is String && message.isNotEmpty
+                ? message
+                : 'Please complete your profile before continuing.',
+            missingFields: missingFields is List
+                ? missingFields.map((field) => field.toString()).toList()
+                : const [],
+          );
+        }
+        if (message is String && message.isNotEmpty) {
+          throw ApiException(message, statusCode: response.statusCode);
+        }
       }
 
       if (detail is List && detail.isNotEmpty) {
         final first = detail.first;
-
-        if (first is Map<String, dynamic> &&
-            first.containsKey('msg')) {
-          throw Exception(first['msg']);
+        if (first is Map<String, dynamic> && first['msg'] != null) {
+          throw ApiException(
+            first['msg'].toString(),
+            statusCode: response.statusCode,
+          );
         }
-
-        throw Exception(detail.toString());
       }
     }
-    throw Exception('Request failed with status ${response.statusCode}');
+
+    final message = response.statusCode >= 500
+        ? 'The server had a problem. Please try again later.'
+        : 'Request failed. Please try again.';
+    throw ApiException(message, statusCode: response.statusCode);
   }
 }
+
