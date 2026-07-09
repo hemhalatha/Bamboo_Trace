@@ -71,6 +71,7 @@ def create_project(headers: dict[str, str]) -> dict:
             "quantity": 5,
             "estimatedDays": 7,
             "progress": 0,
+            "status": "available",
         },
     )
     assert response.status_code == 201
@@ -513,6 +514,7 @@ def test_product_order_marks_project_ordered_and_blocks_second_order() -> None:
         },
     )
     assert order_response.status_code == 201
+    order = order_response.json()
 
     projects_response = client.get("/projects", headers=artisan_headers)
     assert projects_response.status_code == 200
@@ -552,11 +554,8 @@ def test_product_order_marks_project_ordered_and_blocks_second_order() -> None:
         json={"otp": otp_response.json()["otp"]},
     )
     assert verify_response.status_code == 200
-    confirm_response = client.post(
-        f"/orders/{order['id']}/confirm-received",
-        headers=customer_headers,
-    )
-    assert confirm_response.status_code == 200
+    assert verify_response.json()["status"] == "completed"
+    assert verify_response.json()["fulfillmentStatus"] == "received"
 
     completed_projects = client.get("/projects", headers=artisan_headers)
     assert completed_projects.status_code == 200
@@ -646,6 +645,7 @@ def test_image_urls_are_persisted_for_listings_and_custom_requests() -> None:
             "estimatedDays": 5,
             "progress": 0,
             "imageUrl": "/static/uploads/product.png",
+            "status": "available",
         },
     )
     assert product_response.status_code == 201
@@ -1072,18 +1072,11 @@ def test_product_order_receiver_generates_otp_and_seller_verifies() -> None:
     )
     assert verify.status_code == 200
     verified = verify.json()
-    assert verified["fulfillmentStatus"] == "handover_verified"
+    assert verified["fulfillmentStatus"] == "received"
     assert verified["handoverVerifiedAt"] is not None
-
-    confirm = client.post(
-        f"/orders/{order['id']}/confirm-received",
-        headers=customer_headers,
-    )
-    assert confirm.status_code == 200
-    confirmed = confirm.json()
-    assert confirmed["fulfillmentStatus"] == "received"
-    assert confirmed["receiverConfirmedAt"] is not None
-    assert confirmed["status"] == "completed"
+    assert verified["receiverConfirmedAt"] is not None
+    assert verified["completedAt"] is not None
+    assert verified["status"] == "completed"
 
 
 def test_material_order_artisan_receives_otp_and_farmer_verifies() -> None:
@@ -1116,7 +1109,12 @@ def test_material_order_artisan_receives_otp_and_farmer_verifies() -> None:
         json={"otp": generate.json()["otp"]},
     )
     assert verify.status_code == 200
-    assert verify.json()["fulfillmentStatus"] == "handover_verified"
+    verified = verify.json()
+    assert verified["fulfillmentStatus"] == "received"
+    assert verified["handoverVerifiedAt"] is not None
+    assert verified["receiverConfirmedAt"] is not None
+    assert verified["completedAt"] is not None
+    assert verified["status"] == "completed"
 
 
 def test_expired_handover_otp_fails() -> None:
@@ -1251,6 +1249,9 @@ def test_direct_material_order_rejects_quantity_above_available_stock() -> None:
 def test_direct_material_order_allows_upcoming_batch_preorder() -> None:
     _, artisan_headers = signup("artisan")
     _, farmer_headers = signup("farmer")
+    future_harvest_date = (
+        datetime.now(timezone.utc) + timedelta(days=30)
+    ).isoformat().replace("+00:00", "Z")
     batch_response = client.post(
         "/batches",
         headers=farmer_headers,
@@ -1259,7 +1260,7 @@ def test_direct_material_order_allows_upcoming_batch_preorder() -> None:
             "type": "Green Bamboo",
             "quantity": 0,
             "location": "Wayanad",
-            "expectedHarvestDate": "2026-07-01T00:00:00Z",
+            "expectedHarvestDate": future_harvest_date,
         },
     )
     assert batch_response.status_code == 201
@@ -1392,7 +1393,7 @@ def test_order_status_transitions_are_validated() -> None:
         headers=customer_headers,
         json={"status": "rejected"},
     )
-    assert invalid.status_code == 409
+    assert invalid.status_code == 403
 
     progress = client.patch(
         f"/orders/{order_id}/status",
@@ -1415,4 +1416,22 @@ def test_order_status_transitions_are_validated() -> None:
     assert customer_notifications.json()[0]["entityType"] == "order"
     assert customer_notifications.json()[0]["entityId"] == order_id
 
+def test_only_order_seller_can_start_order() -> None:
+    _, customer_headers = signup("customer")
+    _, artisan_headers = signup("artisan")
+    order = create_product_order_for_test(customer_headers, artisan_headers)
 
+    customer_start = client.patch(
+        f"/orders/{order['id']}/status",
+        headers=customer_headers,
+        json={"status": "in_progress"},
+    )
+    assert customer_start.status_code == 403
+
+    artisan_start = client.patch(
+        f"/orders/{order['id']}/status",
+        headers=artisan_headers,
+        json={"status": "in_progress"},
+    )
+    assert artisan_start.status_code == 200
+    assert artisan_start.json()["status"] == "in_progress"

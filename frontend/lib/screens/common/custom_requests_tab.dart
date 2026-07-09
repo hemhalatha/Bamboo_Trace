@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/profile_completion_guard.dart';
 import '../../widgets/remote_image.dart';
+import '../customer/custom_request_page.dart';
 
 class CustomRequestsTab extends StatefulWidget {
   const CustomRequestsTab({super.key, required this.title});
@@ -42,6 +43,15 @@ class _CustomRequestsTabState extends State<CustomRequestsTab>
     _historyFuture = _apiService.getCustomOrderRequestHistory();
   }
 
+  Future<void> _openCreateRequest() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CustomRequestPage()),
+    );
+    if (!mounted) return;
+    setState(_reload);
+  }
+
   Future<void> _respond(CustomOrderRequest request, bool accept) async {
     if (accept) {
       final profileComplete = await ensureProfileComplete(
@@ -70,14 +80,59 @@ class _CustomRequestsTabState extends State<CustomRequestsTab>
 
   @override
   Widget build(BuildContext context) {
+    final currentRole = context.read<AuthService>().currentUser?.role;
+    final canCreate = currentRole == 'customer';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text(
-            widget.title,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              final titleBlock = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    canCreate
+                        ? 'Create and track made-to-order bamboo requests.'
+                        : 'Review customer requests and manage responses.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              );
+              final addButton = FilledButton.icon(
+                onPressed: _openCreateRequest,
+                icon: Icon(Icons.add),
+                label: Text('New Request'),
+              );
+              if (!canCreate) return titleBlock;
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleBlock,
+                    SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: addButton),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: titleBlock),
+                  SizedBox(width: 12),
+                  addButton,
+                ],
+              );
+            },
           ),
         ),
         TabBar(

@@ -140,38 +140,51 @@ class _ArtisanProjectsTabState extends State<ArtisanProjectsTab> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'My Bamboo Products',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Create, publish, and manage your bamboo products.',
-                style: TextStyle(color: Colors.grey[700]),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: 12),
-        ElevatedButton.icon(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final heading = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'My Bamboo Products',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Create, publish, and manage your bamboo products.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        );
+        final addButton = ElevatedButton.icon(
           onPressed: _addProduct,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange[700],
-            foregroundColor: Colors.white,
-          ),
           icon: Icon(Icons.add),
           label: Text('Add Product'),
-        ),
-      ],
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading,
+              SizedBox(height: 16),
+              addButton,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: heading),
+            SizedBox(width: 16),
+            addButton,
+          ],
+        );
+      },
     );
   }
 
@@ -188,16 +201,20 @@ class _ArtisanProjectsTabState extends State<ArtisanProjectsTab> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth < 560
-            ? (constraints.maxWidth - 12) / 2
-            : (constraints.maxWidth - 48) / 5;
+        final columns = constraints.maxWidth < 420
+            ? 1
+            : constraints.maxWidth < 760
+                ? 2
+                : 5;
+        final width =
+            (constraints.maxWidth - (12 * (columns - 1))) / columns;
         return Wrap(
           spacing: 12,
           runSpacing: 12,
           children: cards
               .map(
                 (card) => SizedBox(
-                  width: width.clamp(140, 220).toDouble(),
+                  width: width,
                   child: card,
                 ),
               )
@@ -285,17 +302,32 @@ class _ArtisanProjectsTabState extends State<ArtisanProjectsTab> {
         final products = snapshot.data ?? [];
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView(
-            padding: EdgeInsets.all(16),
-            children: [
-              _buildHeader(),
-              SizedBox(height: 20),
-              _buildCounts(products),
-              SizedBox(height: 20),
-              _buildFilters(),
-              SizedBox(height: 16),
-              _buildProducts(products),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) => ListView(
+              padding: EdgeInsets.symmetric(
+                horizontal: constraints.maxWidth < 600 ? 16 : 24,
+                vertical: 20,
+              ),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 1180),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeader(),
+                        SizedBox(height: 24),
+                        _buildCounts(products),
+                        SizedBox(height: 24),
+                        _buildFilters(),
+                        SizedBox(height: 16),
+                        _buildProducts(products),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

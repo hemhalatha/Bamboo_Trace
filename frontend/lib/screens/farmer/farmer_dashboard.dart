@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'farmer_home_tab.dart';
 import 'farmer_batches_tab.dart';
 import '../common/profile_tab.dart';
@@ -14,29 +15,40 @@ class FarmerDashboard extends StatefulWidget {
 
 class _FarmerDashboardState extends State<FarmerDashboard> {
   int _currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    FarmerHomeTab(),
-    OrderRequestsTab(title: 'Material Requests'),
-    RoleOrdersTab(title: 'Material Orders'),
-    FarmerBatchesTab(),
-    ProfileTab(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      FarmerHomeTab(
+        onOpenRequests: () => _openTab(1),
+        onOpenOrders: () => _openTab(2),
+        onOpenBatches: () => _openTab(3),
+      ),
+      OrderRequestsTab(title: 'Material Requests'),
+      RoleOrdersTab(title: 'Material Orders'),
+      FarmerBatchesTab(),
+      ProfileTab(),
+    ];
+  }
+
+  void _openTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Farmer Dashboard'),
-        backgroundColor: Colors.green[700],
-        foregroundColor: Colors.white,
         actions: [NotificationIconButton()],
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _openTab,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
@@ -62,7 +74,6 @@ class _FarmerDashboardState extends State<FarmerDashboard> {
                   MaterialPageRoute(builder: (_) => AddBatchPage()),
                 );
               },
-              backgroundColor: Colors.green[700],
               child: Icon(Icons.add),
             )
           : null,

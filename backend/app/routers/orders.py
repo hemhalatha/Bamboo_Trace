@@ -331,6 +331,8 @@ def update_order_status(
             detail="Order not found",
         )
 
+    _require_order_seller(order, current_user)
+
     allowed_statuses = VALID_STATUS_TRANSITIONS.get(order.status, set())
     if payload.status not in allowed_statuses:
         raise HTTPException(
@@ -427,9 +429,14 @@ def verify_handover_otp(
             detail="Invalid handover OTP",
         )
 
+    now = datetime.now(timezone.utc)
     order.handover_otp_hash = None
-    order.handover_verified_at = datetime.now(timezone.utc)
-    order.fulfillment_status = FULFILLMENT_HANDOVER_VERIFIED
+    order.handover_verified_at = now
+    order.receiver_confirmed_at = now
+    order.fulfillment_status = FULFILLMENT_RECEIVED
+    order.status = OrderStatus.completed
+    order.completed_at = now
+    _mark_order_product_sold(db, order)
     db.commit()
     db.refresh(order)
     return _load_order_details(db, order)

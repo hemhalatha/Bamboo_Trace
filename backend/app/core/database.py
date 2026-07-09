@@ -135,9 +135,16 @@ def ensure_project_columns() -> None:
     if "projects" not in inspector.get_table_names():
         return
 
-    existing_columns = {
-        column["name"] for column in inspector.get_columns("projects")
-    }
+    project_columns = inspector.get_columns("projects")
+    existing_columns = {column["name"] for column in project_columns}
+    source_batch_column = next(
+        (
+            column
+            for column in project_columns
+            if column["name"] == "source_batch_id"
+        ),
+        None,
+    )
     required_columns = {
         "description": "VARCHAR(1000)",
         "price": "FLOAT",
@@ -146,6 +153,18 @@ def ensure_project_columns() -> None:
         "source_details": "VARCHAR(500)",
     }
     with engine.begin() as connection:
+        if (
+            engine.dialect.name == "postgresql"
+            and source_batch_column is not None
+            and source_batch_column.get("nullable") is False
+        ):
+            connection.execute(
+                text(
+                    "ALTER TABLE projects "
+                    "ALTER COLUMN source_batch_id DROP NOT NULL"
+                )
+            )
+
         for column_name, column_type in required_columns.items():
             if column_name not in existing_columns:
                 connection.execute(

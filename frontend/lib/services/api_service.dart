@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -185,7 +186,13 @@ class ApiService {
       ),
     );
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw ApiException(
+        'Image upload timed out. Check the API URL, CORS settings, and connection.',
+        statusCode: 408,
+      ),
+    );
     final response = await http.Response.fromStream(streamedResponse);
     final data = _decodeObject(response);
     return data['imageUrl']?.toString() ?? data['image_url']?.toString() ?? '';
@@ -678,4 +685,3 @@ class ApiService {
     throw ApiException(message, statusCode: response.statusCode);
   }
 }
-

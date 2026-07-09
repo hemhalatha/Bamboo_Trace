@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'customer_home_tab.dart';
 import 'customer_orders_tab.dart';
 import 'customer_timeline_tab.dart';
@@ -13,29 +14,39 @@ class CustomerDashboard extends StatefulWidget {
 
 class _CustomerDashboardState extends State<CustomerDashboard> {
   int _currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    CustomerHomeTab(),
-    CustomRequestsTab(title: 'Custom Requests'),
-    CustomerOrdersTab(),
-    CustomerTimelineTab(),
-    ProfileTab(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      CustomerHomeTab(
+        onOpenRequests: () => _openTab(1),
+        onOpenOrders: () => _openTab(2),
+      ),
+      CustomRequestsTab(title: 'Custom Requests'),
+      CustomerOrdersTab(),
+      CustomerTimelineTab(),
+      ProfileTab(),
+    ];
+  }
+
+  void _openTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('BambooTrace Shop'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
         actions: [NotificationIconButton()],
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _openTab,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Shop'),
           BottomNavigationBarItem(
