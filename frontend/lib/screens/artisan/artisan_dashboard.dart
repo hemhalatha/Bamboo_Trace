@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'artisan_home_tab.dart';
 import 'artisan_projects_tab.dart';
 import 'material_market_tab.dart';
@@ -14,30 +15,61 @@ class ArtisanDashboard extends StatefulWidget {
 
 class _ArtisanDashboardState extends State<ArtisanDashboard> {
   int _currentIndex = 0;
+  String _artisanOrderMode = 'customer_sales';
+  late List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    ArtisanHomeTab(),
-    CustomRequestsTab(title: 'Custom Requests'),
-    RoleOrdersTab(title: 'Orders'),
-    MaterialMarketTab(),
-    ArtisanProjectsTab(),
-    ProfileTab(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = _buildPages();
+  }
+
+  List<Widget> _buildPages() {
+    return [
+      ArtisanHomeTab(
+        onOpenRequests: () => _openTab(1),
+        onOpenOrders: () => _openOrders('customer_sales'),
+        onOpenCustomerOrders: () => _openOrders('customer_sales'),
+        onOpenMaterialOrders: () => _openOrders('bamboo_purchases'),
+        onOpenMarket: () => _openTab(3),
+        onOpenProducts: () => _openTab(4),
+      ),
+      CustomRequestsTab(title: 'Custom Requests'),
+      RoleOrdersTab(
+        key: ValueKey('artisan-orders-$_artisanOrderMode'),
+        title: 'Artisan Orders',
+        initialArtisanOrderMode: _artisanOrderMode,
+      ),
+      MaterialMarketTab(),
+      ArtisanProjectsTab(),
+      ProfileTab(),
+    ];
+  }
+
+  void _openOrders(String mode) {
+    setState(() {
+      _artisanOrderMode = mode;
+      _pages = _buildPages();
+      _currentIndex = 2;
+    });
+  }
+
+  void _openTab(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Artisan Dashboard'),
-        backgroundColor: Colors.orange[700],
-        foregroundColor: Colors.white,
         actions: [NotificationIconButton()],
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _openTab,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(

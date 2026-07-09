@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
 import 'screens/auth/splash_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,7 @@ class BambooTraceApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'BambooTrace',
-        theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
+        theme: AppTheme.light,
         home: SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),

@@ -22,23 +22,38 @@ class _NotificationsPageState extends State<NotificationsPage> {
     _notificationsFuture = _apiService.getNotifications();
   }
 
-  Future<void> _markRead(AppNotification notification) async {
+  Future<void> _openNotification(AppNotification notification) async {
+    var targetNotification = notification;
     try {
-      await _apiService.markNotificationRead(notification.id);
-      if (!mounted) return;
-      setState(() => _notificationsFuture = _apiService.getNotifications());
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NotificationTargetPage(notification: notification),
-        ),
-      );
+      if (notification.readAt == null) {
+        targetNotification = await _apiService.markNotificationRead(
+          notification.id,
+        );
+        if (mounted) {
+          setState(() {
+            _notificationsFuture = _apiService.getNotifications();
+          });
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyErrorMessage(e))),
+        SnackBar(
+          content: Text(
+            'Opened notification, but read status was not updated: '
+            '${friendlyErrorMessage(e)}',
+          ),
+        ),
       );
     }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            NotificationTargetPage(notification: targetNotification),
+      ),
+    );
   }
 
   @override
@@ -73,7 +88,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   title: Text(notification.title),
                   subtitle: Text(notification.body),
                   trailing: Icon(Icons.chevron_right),
-                  onTap: () => _markRead(notification),
+                  onTap: () => _openNotification(notification),
                 ),
               );
             },

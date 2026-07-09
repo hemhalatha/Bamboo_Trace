@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 import logging
 
@@ -30,11 +31,29 @@ from app.routers import (
     users,
 )
 
-app = FastAPI(title="BambooTrace API", version="1.0.0")
 logger = logging.getLogger("bambootrace.api")
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 UPLOAD_DIR = STATIC_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if not settings.run_db_startup_tasks:
+        logger.info("Database startup tasks are disabled")
+        yield
+        return
+
+    Base.metadata.create_all(bind=engine)
+    ensure_user_columns()
+    ensure_order_columns()
+    ensure_project_columns()
+    ensure_batch_columns()
+    ensure_custom_order_request_columns()
+    yield
+
+
+app = FastAPI(title="BambooTrace API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,19 +70,6 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    if not settings.run_db_startup_tasks:
-        logger.info("Database startup tasks are disabled")
-        return
-    Base.metadata.create_all(bind=engine)
-    ensure_user_columns()
-    ensure_order_columns()
-    ensure_project_columns()
-    ensure_batch_columns()
-    ensure_custom_order_request_columns()
 
 
 @app.exception_handler(RequestValidationError)
@@ -113,6 +119,3 @@ app.mount(
     StaticFiles(directory=str(UPLOAD_DIR), html=False),
     name="uploads",
 )
-
-
-

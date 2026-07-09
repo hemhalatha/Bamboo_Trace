@@ -14,8 +14,9 @@ String friendlyErrorMessage(Object? error) {
       lowerMessage.contains('socketexception') ||
       lowerMessage.contains('failed host lookup') ||
       lowerMessage.contains('connection refused') ||
-      lowerMessage.contains('xmlhttprequest error')) {
-    return 'Unable to reach the server. Check your connection and API URL.';
+      lowerMessage.contains('xmlhttprequest error') ||
+      lowerMessage.contains('failed to fetch')) {
+    return 'Unable to reach the server. Check your connection, API URL, and CORS configuration.';
   }
 
   if (lowerMessage.contains('request failed with status 500')) {
@@ -24,4 +25,3 @@ String friendlyErrorMessage(Object? error) {
 
   return message;
 }
-
