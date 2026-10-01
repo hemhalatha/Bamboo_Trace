@@ -203,9 +203,21 @@ class BatchCreate(BaseModel):
         return self
 
 
-class BatchPublic(BatchCreate):
+class BatchPublic(BaseModel):
     id: str
     owner_id: str = Field(alias="ownerId")
+    batch_id: str = Field(alias="batchId")
+    type: str
+    quantity: int
+    quantity_available: int = Field(alias="quantityAvailable")
+    quantity_unit: str = Field(alias="quantityUnit")
+    price: float | None = None
+    location: str
+    image_url: str | None = Field(default=None, alias="imageUrl")
+    available_now: bool = Field(alias="availableNow")
+    available_from_date: datetime | None = Field(default=None, alias="availableFromDate")
+    expected_harvest_date: datetime | None = Field(default=None, alias="expectedHarvestDate")
+    status: BatchStatus
     created_at: datetime = Field(alias="createdAt")
 
     model_config = {"from_attributes": True, "populate_by_name": True}

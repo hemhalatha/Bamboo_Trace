@@ -88,6 +88,72 @@ flutter build web --dart-define=API_BASE_URL=https://your-api.example.com
 
 Production builds must not use localhost. `frontend/lib/config/app_config.dart` validates this.
 
+## Docker Setup
+
+The repository includes production-oriented Docker assets for PostgreSQL, the FastAPI API, and the Flutter web frontend.
+
+Create a root `.env` file from the checked-in example:
+
+```bash
+cp .env.example .env
+```
+
+Update at least these values before building images for a real environment:
+
+```env
+POSTGRES_PASSWORD=replace-with-a-strong-database-password
+DATABASE_URL=postgresql://bambootrace:replace-with-a-strong-database-password@db:5432/bambootrace
+JWT_SECRET_KEY=replace-with-at-least-32-random-characters
+API_BASE_URL=https://api.your-domain.example
+ALLOWED_ORIGINS=https://your-frontend-domain.example
+APP_ENV=production
+ALLOWED_ORIGIN_REGEX=
+RUN_DB_STARTUP_TASKS=false
+```
+
+Start the full stack with Docker Compose:
+
+```bash
+docker compose up --build -d
+```
+
+Default published ports:
+
+- Frontend: `http://localhost:8080`
+- Backend API: `http://localhost:8000`
+- PostgreSQL: `localhost:5432`
+
+Check service health:
+
+```bash
+docker compose ps
+curl http://localhost:8000/health
+curl http://localhost:8080/healthz
+```
+
+Persistent Docker volumes are used for PostgreSQL data and backend uploads:
+
+- `postgres-data` -> PostgreSQL database files
+- `backend-uploads` -> `/app/static/uploads`
+
+Useful Docker commands:
+
+```bash
+docker compose logs -f backend
+docker compose restart backend
+docker compose down
+docker compose down -v  # removes database and upload volumes
+```
+
+### Docker Production Notes
+
+- The backend image runs as a non-root user and exposes `/health` for container health checks.
+- The frontend image is a multi-stage Flutter web build served by non-root nginx on port `8080`.
+- `API_BASE_URL` is compiled into the Flutter web build. Rebuild the frontend image when the API URL changes.
+- Release-mode Flutter builds in this codebase require `API_BASE_URL` to be a full HTTPS URL and reject local origins. Keep that validation for production deploys.
+- Put TLS termination in front of the containers with your platform load balancer or reverse proxy.
+- Do not use the placeholder secrets from `.env.example` in production.
+
 ## API Overview
 
 Authentication endpoints:
@@ -148,10 +214,12 @@ flutter test
 
 ## Deployment Notes
 
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the release checklist, Docker commands, required production environment variables, and smoke-test steps.
+
 Backend deployment should run the FastAPI app with Uvicorn or a production ASGI server setup. Example process command:
 
 ```powershell
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
 Set production environment variables in the deployment platform, not in committed files.
