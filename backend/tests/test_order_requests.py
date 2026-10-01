@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.core.database import Base, SessionLocal, engine
 from app.main import app
-from app.models import Order
+from app.models import Batch, BatchStatus, Order
 from app.routers.auth import _login_attempts, _signup_attempts
 
 
@@ -1163,9 +1163,40 @@ def test_receiver_can_report_dispute_after_handover() -> None:
     assert dispute.json()["status"] != "completed"
 
 
+def test_existing_upcoming_batch_with_past_date_still_serializes() -> None:
+    _, artisan_headers = signup("artisan")
+    farmer, farmer_headers = signup("farmer")
+
+    with SessionLocal() as db:
+        batch = Batch(
+            owner_id=farmer["id"],
+            batch_id="PAST-UPCOMING-001",
+            type="Young Bamboo",
+            quantity=0,
+            quantity_available=0,
+            quantity_unit="kg",
+            location="Wayanad",
+            available_now=False,
+            status=BatchStatus.upcoming,
+            expected_harvest_date=datetime.now(timezone.utc) - timedelta(days=3),
+        )
+        db.add(batch)
+        db.commit()
+        batch_id = batch.id
+
+    farmer_response = client.get("/batches", headers=farmer_headers)
+    assert farmer_response.status_code == 200
+    assert any(batch["id"] == batch_id for batch in farmer_response.json())
+
+    catalog_response = client.get("/batches/catalog", headers=artisan_headers)
+    assert catalog_response.status_code == 200
+    assert any(batch["id"] == batch_id for batch in catalog_response.json())
+
+
 def test_farmer_can_create_available_and_upcoming_batches_visible_to_artisan() -> None:
     _, artisan_headers = signup("artisan")
     _, farmer_headers = signup("farmer")
+    future_harvest_date = (datetime.now(timezone.utc) + timedelta(days=30)).date().isoformat()
 
     available = client.post(
         "/batches",
@@ -1196,7 +1227,7 @@ def test_farmer_can_create_available_and_upcoming_batches_visible_to_artisan() -
             "location": "Wayanad",
             "availableNow": False,
             "status": "upcoming",
-            "expectedHarvestDate": "2026-07-15",
+            "expectedHarvestDate": future_harvest_date,
         },
     )
     assert upcoming.status_code == 201

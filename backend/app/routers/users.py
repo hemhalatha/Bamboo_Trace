@@ -34,7 +34,7 @@ def update_my_profile(
     ]
     if missing_fields:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "message": profile_completion_message(current_user.role),
                 "profileRequired": True,
