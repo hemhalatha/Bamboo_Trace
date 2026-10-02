@@ -289,17 +289,21 @@ def ensure_custom_order_request_columns() -> None:
         "image_url": "VARCHAR(500)",
     }
 
-    with engine.begin() as connection:
-        if engine.dialect.name == "postgresql":
-            connection.execute(
+    if engine.dialect.name == "postgresql":
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(
                 text("ALTER TYPE customrequesttargettype ADD VALUE IF NOT EXISTS 'broadcast'")
             )
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
             connection.execute(
                 text(
                     "ALTER TABLE custom_order_requests "
                     "ALTER COLUMN target_artisan_id DROP NOT NULL"
                 )
             )
+
 
         for column_name, column_type in required_columns.items():
             if column_name not in existing_columns:
