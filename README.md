@@ -90,15 +90,17 @@ Production builds must not use localhost. `frontend/lib/config/app_config.dart` 
 
 ## Docker Setup
 
-The repository includes production-oriented Docker assets for PostgreSQL, the FastAPI API, and the Flutter web frontend.
+The repository includes production-oriented Docker assets for PostgreSQL, the FastAPI API, and the Flutter web frontend. It is recommended to use Docker for local development testing and production deployments.
 
-Create a root `.env` file from the checked-in example:
+### 1. Environment Configuration
+
+Create a root `.env` file from the checked-in example. This file will be ignored by Git to keep your secrets safe.
 
 ```bash
 cp .env.example .env
 ```
 
-Update at least these values before building images for a real environment:
+**For Production:** Update at least these values before building images:
 
 ```env
 POSTGRES_PASSWORD=replace-with-a-strong-database-password
@@ -108,41 +110,60 @@ API_BASE_URL=https://api.your-domain.example
 ALLOWED_ORIGINS=https://your-frontend-domain.example
 APP_ENV=production
 ALLOWED_ORIGIN_REGEX=
-RUN_DB_STARTUP_TASKS=false
+RUN_DB_STARTUP_TASKS=false  # Set to true only on first run to create schemas
 ```
 
-Start the full stack with Docker Compose:
+### 2. Starting the Stack
+
+Start the full stack in detached mode (background):
 
 ```bash
 docker compose up --build -d
 ```
 
+*(Tip: If this is your first time or you want to see real-time logs from all services, omit the `-d` flag: `docker compose up --build`)*
+
+### 3. Accessing the Application
+
 Default published ports:
 
-- Frontend: `http://localhost:8080`
-- Backend API: `http://localhost:8000`
-- PostgreSQL: `localhost:5432`
+- **Frontend App**: [http://localhost:8080](http://localhost:8080)
+- **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **PostgreSQL Database**: `localhost:5432`
 
-Check service health:
+### 4. Useful Docker Commands
 
+**Checking Status & Logs:**
 ```bash
-docker compose ps
-curl http://localhost:8000/health
-curl http://localhost:8080/healthz
+docker compose ps                 # View running containers and health status
+docker compose logs -f            # Tail logs for all services
+docker compose logs -f backend    # Tail logs for just the backend API
+curl http://localhost:8000/health # Check backend health endpoint
 ```
 
-Persistent Docker volumes are used for PostgreSQL data and backend uploads:
+**Rebuilding & Updating:**
+```bash
+# Rebuild a specific service after making code changes (e.g., frontend)
+docker compose up -d --build frontend
 
+# Restart a service without rebuilding
+docker compose restart backend
+```
+
+**Database & Volumes:**
+Persistent Docker volumes are automatically created for PostgreSQL data and backend uploads.
 - `postgres-data` -> PostgreSQL database files
 - `backend-uploads` -> `/app/static/uploads`
 
-Useful Docker commands:
-
 ```bash
-docker compose logs -f backend
-docker compose restart backend
+# Execute a command inside the running backend container (e.g., run tests)
+docker compose exec backend python -m pytest
+
+# Stop all services safely
 docker compose down
-docker compose down -v  # removes database and upload volumes
+
+# WARNING: Stop all services AND completely wipe database/upload data
+docker compose down -v
 ```
 
 ### Docker Production Notes
