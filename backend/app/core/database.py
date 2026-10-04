@@ -92,40 +92,40 @@ def ensure_order_columns() -> None:
         connection.execute(
             text(
                 "UPDATE orders SET order_type = 'product_order' "
-                "WHERE order_type IS NULL OR order_type = ''"
+                "WHERE order_type IS NULL OR CAST(order_type AS VARCHAR) = ''"
             )
         )
         connection.execute(
             text(
                 "UPDATE orders SET quantity_unit = 'item' "
-                "WHERE quantity_unit IS NULL OR quantity_unit = ''"
+                "WHERE quantity_unit IS NULL OR CAST(quantity_unit AS VARCHAR) = ''"
             )
         )
         connection.execute(
             text(
                 "UPDATE orders SET fulfillment_status = 'pending_handover' "
-                "WHERE fulfillment_status IS NULL OR fulfillment_status = ''"
+                "WHERE fulfillment_status IS NULL OR CAST(fulfillment_status AS VARCHAR) = ''"
             )
         )
         connection.execute(
             text(
                 "UPDATE orders SET status = 'pending' "
-                "WHERE status IS NULL OR status = ''"
+                "WHERE status IS NULL OR CAST(status AS VARCHAR) = ''"
             )
         )
         connection.execute(
-            text("UPDATE orders SET status = 'pending' WHERE lower(status) = 'pending'")
+            text("UPDATE orders SET status = 'pending' WHERE lower(CAST(status AS VARCHAR)) = 'pending'")
         )
         connection.execute(
             text(
                 "UPDATE orders SET status = 'in_progress' "
-                "WHERE lower(status) IN ('in progress', 'in_progress')"
+                "WHERE lower(CAST(status AS VARCHAR)) IN ('in progress', 'in_progress')"
             )
         )
         connection.execute(
             text(
                 "UPDATE orders SET status = 'completed' "
-                "WHERE lower(status) IN ('delivered', 'completed')"
+                "WHERE lower(CAST(status AS VARCHAR)) IN ('delivered', 'completed')"
             )
         )
 
@@ -189,20 +189,20 @@ def ensure_project_columns() -> None:
         connection.execute(
             text(
                 "UPDATE projects SET status = 'draft' "
-                "WHERE (status IS NULL OR status = '') AND is_hidden = :is_hidden"
+                "WHERE (status IS NULL OR CAST(status AS VARCHAR) = '') AND is_hidden = :is_hidden"
             ),
             {"is_hidden": True},
         )
         connection.execute(
             text(
                 "UPDATE projects SET status = 'sold' "
-                "WHERE (status IS NULL OR status = '') AND quantity <= 0"
+                "WHERE (status IS NULL OR CAST(status AS VARCHAR) = '') AND quantity <= 0"
             )
         )
         connection.execute(
             text(
                 "UPDATE projects SET status = 'available' "
-                "WHERE status IS NULL OR status = ''"
+                "WHERE status IS NULL OR CAST(status AS VARCHAR) = ''"
             )
         )
 
@@ -240,7 +240,7 @@ def ensure_batch_columns() -> None:
         connection.execute(
             text(
                 "UPDATE batches SET quantity_unit = 'kg' "
-                "WHERE quantity_unit IS NULL OR quantity_unit = ''"
+                "WHERE quantity_unit IS NULL OR CAST(quantity_unit AS VARCHAR) = ''"
             )
         )
         connection.execute(
@@ -255,7 +255,7 @@ def ensure_batch_columns() -> None:
                 "UPDATE batches SET status = 'sold_out' "
                 "WHERE (quantity_available IS NULL OR quantity_available <= 0) "
                 "AND expected_harvest_date IS NULL "
-                "AND (status IS NULL OR status = '')"
+                "AND (status IS NULL OR CAST(status AS VARCHAR) = '')"
             )
         )
         connection.execute(
@@ -263,14 +263,14 @@ def ensure_batch_columns() -> None:
                 "UPDATE batches SET status = 'upcoming' "
                 "WHERE (available_now = :available_now OR quantity_available <= 0) "
                 "AND expected_harvest_date IS NOT NULL "
-                "AND (status IS NULL OR status = '')"
+                "AND (status IS NULL OR CAST(status AS VARCHAR) = '')"
             ),
             {"available_now": False},
         )
         connection.execute(
             text(
                 "UPDATE batches SET status = 'available' "
-                "WHERE status IS NULL OR status = ''"
+                "WHERE status IS NULL OR CAST(status AS VARCHAR) = ''"
             )
         )
 

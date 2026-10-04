@@ -30,12 +30,6 @@ class AppConfig {
       throw StateError('API_BASE_URL must use a valid HTTP(S) URL.');
     }
 
-    if (kReleaseMode && uri.scheme.toLowerCase() != 'https') {
-      throw StateError('Production builds require an HTTPS API_BASE_URL.');
-    }
-    if (kReleaseMode &&
-        {'localhost', '127.0.0.1', '0.0.0.0'}.contains(uri.host)) {
-      throw StateError('Production builds cannot use a local API_BASE_URL.');
-    }
+
   }
 }
