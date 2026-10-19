@@ -1,6 +1,13 @@
 .env
 .env.*
 !.env.example
+!.env.azure.example
+
+# Private deployment and TLS keys
+*.pem
+*.key
+*.p12
+*.pfx
 
 __pycache__/
 *.py[cod]
