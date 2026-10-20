@@ -245,6 +245,4 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
 Set production environment variables in the deployment platform, not in committed files.
 
-## Important Clarification
 
-The backend is not Node.js. There is no Express/Firebase Functions backend in the current codebase. Any previous `npm run dev` command was only an NPM wrapper around `uvicorn`; that wrapper has been removed to avoid deployment and developer confusion.
