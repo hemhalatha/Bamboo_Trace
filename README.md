@@ -1,6 +1,6 @@
 # BambooTrace
 
-BambooTrace is a full-stack bamboo supply-chain and artisan commerce app. It connects farmers, artisans, and customers so bamboo batches, products, custom requests, and handover-based orders can be managed with traceability.
+BambooTrace is a full-stack supply chain platform that tracks bamboo from sourcing to finished products, connecting batch records, inventory, and orders through verified handovers to ensure transparent sourcing and end-to-end traceability.
 
 ## Tech Stack
 
